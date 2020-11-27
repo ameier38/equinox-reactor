@@ -1,0 +1,18 @@
+storage none
+source https://api.nuget.org/v3/index.json
+
+nuget Equinox.EventStore
+nuget FsCodec
+nuget FsCode.SystemTextJson
+nuget FSharp.Control.AsyncSeq
+nuget LiteDB
+nuget LiteDB.FSharp
+
+// [ FAKE GROUP ]
+group Build
+    storage none
+    source https://api.nuget.org/v3/index.json
+    nuget Fake.DotNet.Cli
+    nuget Fake.IO.FileSystem
+    nuget Fake.Core.Target
+    nuget BlackFox.Fake.BuildTask
