@@ -12,11 +12,11 @@ let clean = BuildTask.create "Clean" [] {
     |> Shell.cleanDirs 
 }
 
-let build = BuildTask.create "Build" [clean.IfNeeded] {
+BuildTask.create "Restore" [clean.IfNeeded] {
     !! "src/**/*.*proj"
-    |> Seq.iter (DotNet.build id)
+    |> Seq.iter (DotNet.restore id)
 }
 
-let _all = BuildTask.createEmpty "All" [clean; build]
+let _default = BuildTask.createEmpty "Default" []
 
-BuildTask.runOrDefault _all
+BuildTask.runOrDefault _default

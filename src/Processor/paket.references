@@ -1,0 +1,8 @@
+Equinox.EventStore
+EventStore.Client
+Fable.Remoting.Server
+Fable.Remoting.Suave
+FsCodec
+FsCodec.NewtonsoftJson
+Serilog
+Serilog.Sinks.Console

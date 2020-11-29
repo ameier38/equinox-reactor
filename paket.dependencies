@@ -1,12 +1,21 @@
+version 5.257.0
 storage none
 source https://api.nuget.org/v3/index.json
 
 nuget Equinox.EventStore
+nuget EventStore.Client
+nuget Fable.Remoting.Client
+nuget Fable.Remoting.Server
+nuget Fable.Remoting.Suave
 nuget FsCodec
-nuget FsCode.SystemTextJson
+nuget FsCodec.NewtonsoftJson
 nuget FSharp.Control.AsyncSeq
+nuget FSharp.UMX
 nuget LiteDB
 nuget LiteDB.FSharp
+nuget Serilog
+nuget Serilog.Sinks.Console
+nuget TypeShape
 
 // [ FAKE GROUP ]
 group Build

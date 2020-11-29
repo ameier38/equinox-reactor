@@ -1,0 +1,9 @@
+EventStore.Client
+FSharp.Control.AsyncSeq
+FSharp.UMX
+FsCodec
+FsCodec.NewtonsoftJson
+LiteDB
+LiteDB.FSharp
+Serilog
+Serilog.Sinks.Console
