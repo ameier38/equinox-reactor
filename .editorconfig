@@ -1,0 +1,3 @@
+[*.fs]
+fsharp_single_argument_web_mode=true
+fsharp_max_value_binding_width=100

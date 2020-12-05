@@ -2,6 +2,9 @@
 .ionide
 .paket
 .fake
+.litedb
+node_modules
 paket-files
 obj
 bin
+dist

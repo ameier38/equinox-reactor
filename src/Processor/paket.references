@@ -6,3 +6,4 @@ FsCodec
 FsCodec.NewtonsoftJson
 Serilog
 Serilog.Sinks.Console
+Serilog.Sinks.Seq

@@ -1,2 +1,8 @@
+Fable.Remoting.Server
+Fable.Remoting.Suave
+FSharp.UMX
 LiteDB
-LiteDB.FSharp
+Serilog
+Serilog.Sinks.Console
+Serilog.Sinks.Seq
+StackExchange.Redis

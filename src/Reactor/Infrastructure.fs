@@ -1,7 +1,6 @@
 namespace Reactor
 
 open EventStore.ClientAPI
-open FSharp.UMX
 open System
 
 [<RequireQualifiedAccess>]

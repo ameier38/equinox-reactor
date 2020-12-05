@@ -5,12 +5,17 @@ type StreamConfig =
     static member Load() =
         { VehicleCategory = "Vehicle" }
 
-type CollectionConfig =
-    { CheckpointsCollection: string
-      VehiclesCollection: string }
+type ServerConfig =
+    { Host: string
+      Port: int
+      ClientUrl: string }
     static member Load() =
-        { CheckpointsCollection = "checkpoints"
-          VehiclesCollection = "vehicles" }
+        let clientScheme = Env.getEnv "CLIENT_SCHEME" "http"
+        let clientHost = Env.getEnv "CLIENT_HOST" "localhost"
+        let clientPort = Env.getEnv "CLIENT_PORT" "3000"
+        { Host = Env.getEnv "SERVER_HOST" "0.0.0.0"
+          Port = Env.getEnv "SERVER_PORT" "5000" |> int
+          ClientUrl = sprintf "%s://%s:%s" clientScheme clientHost clientPort }
 
 type EventStoreDBConfig =
     { Url: string
@@ -26,7 +31,27 @@ type EventStoreDBConfig =
           User = user
           Password = password }
 
-type LiteDBConfig =
-    { DataPath: string }
+type RedisConfig =
+    { ConnStr: string
+      VehicleCountKey: string }
     static member Load() =
-        { DataPath = Env.getEnv "LITEDB_DATA_PATH" "dealership.db" }
+        let host = Env.getEnv "REDIS_HOST" "localhost"
+        let port = Env.getEnv "REDIS_PORT" "6379" |> int
+        let password = Env.getEnv "REDIS_PASSWORD" "changeit"
+        { ConnStr = sprintf "%s:%i,password=%s" host port password
+          VehicleCountKey = "vehicleCount" }
+
+type LiteDBConfig =
+    { Filename: string
+      VehicleOverviewCollection: string }
+    static member Load() =
+        { Filename = Env.getEnv "LITEDB_FILENAME" "dealership.db"
+          VehicleOverviewCollection = "vehicles" }
+
+type SeqConfig =
+    { Url: string }
+    static member Load() =
+        let scheme = Env.getEnv "SEQ_SCHEME" "http"
+        let host = Env.getEnv "SEQ_HOST" "localhost"
+        let port = Env.getEnv "SEQ_PORT" "5341" |> int
+        { Url = sprintf "%s://%s:%i" scheme host port }

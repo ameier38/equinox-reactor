@@ -5,6 +5,10 @@ open Shared
 open System
 open Serilog
 
+
+type IStreamStore =
+    abstract member ResolveVehicle: vehicleId:VehicleId -> Equinox.Stream<VehicleEvent,VehicleState>
+
 type EventStoreDBStreamStore(eventstoreConfig: EventStoreDBConfig, streamConfig: StreamConfig, log: ILogger) =
     let codec =
         FsCodec.NewtonsoftJson.Codec.Create<VehicleEvent>()
@@ -34,9 +38,11 @@ type EventStoreDBStreamStore(eventstoreConfig: EventStoreDBConfig, streamConfig:
     let resolver =
         Resolver(context, codec, Aggregate.fold, Aggregate.initial, cacheStrategy)
 
-    member _.ResolveVehicle(vehicleId: VehicleId) =
-        let streamName =
-            FsCodec.StreamName.create streamConfig.VehicleCategory (VehicleId.toStringN vehicleId)
+    interface IStreamStore with
 
-        let vehicleStream = resolver.Resolve(streamName)
-        Equinox.Stream(log, vehicleStream, 3)
+        member _.ResolveVehicle(vehicleId: VehicleId) =
+            let streamName =
+                FsCodec.StreamName.create streamConfig.VehicleCategory (VehicleId.toStringN vehicleId)
+
+            let vehicleStream = resolver.Resolve(streamName)
+            Equinox.Stream(log, vehicleStream, 3)
