@@ -19,12 +19,21 @@ RUN dotnet paket install
 COPY build.fsx .
 COPY src src
 RUN dotnet fake build -t TestUnits
-RUN dotnet fake build -t PublishProcessor
+RUN dotnet fake build -t PublishIntegrationTests
 
 FROM mcr.microsoft.com/dotnet/core/runtime:3.1 as runner
 
+# install packages needed by chromedriver
+RUN apt-get update \
+    && apt-get -y install --no-install-recommends \
+        libgdiplus \
+    # clean up
+    && apt-get autoremove -y \
+    && apt-get clean -y \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-COPY --from=builder /app/src/Processor/out .
+COPY --from=builder /app/src/IntegrationTests/out .
 
-ENTRYPOINT [ "dotnet", "Processor.dll" ]
+ENTRYPOINT [ "dotnet", "IntegrationTests.dll", "--headless" ]

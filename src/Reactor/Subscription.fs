@@ -50,44 +50,42 @@ type EventStoreDBSubscription(eventStoreDBConfig: EventStoreDBConfig,
              resolveLinkTos = true,
              subscriptionName = name)
 
-    let subscribe (state: SubscriptionState) (mailbox: SubscriptionMailbox): Async<unit> =
-        async {
-            let eventAppreared =
-                Func<EventStoreCatchUpSubscription, ResolvedEvent, Task>(fun _ resolvedEvent ->
-                    let work =
-                        async {
-                            let encodedEvent = UnionEncoderAdapters.encodedEventOfResolvedEvent resolvedEvent
-                            let checkpoint = Checkpoint.StreamPosition encodedEvent.Index
-                            do! eventHandler encodedEvent
-                            mailbox.Post(EventAppeared checkpoint)
-                        }
+    let subscribe (state: SubscriptionState) (mailbox: SubscriptionMailbox) =
+        let eventAppreared =
+            Func<EventStoreCatchUpSubscription, ResolvedEvent, Task>(fun _ resolvedEvent ->
+                let work =
+                    async {
+                        let encodedEvent = UnionEncoderAdapters.encodedEventOfResolvedEvent resolvedEvent
+                        let checkpoint = Checkpoint.StreamPosition encodedEvent.Index
+                        do! eventHandler encodedEvent
+                        mailbox.Post(EventAppeared checkpoint)
+                    }
 
-                    Async.StartAsTask(work, cancellationToken = state.CancellationToken) :> Task)
+                Async.StartAsTask(work, cancellationToken = state.CancellationToken) :> Task)
 
-            let subscriptionDropped =
-                Action<EventStoreCatchUpSubscription, SubscriptionDropReason, exn>(fun _ reason error ->
-                    mailbox.Post(Dropped(reason, error)))
+        let subscriptionDropped =
+            Action<EventStoreCatchUpSubscription, SubscriptionDropReason, exn>(fun _ reason error ->
+                mailbox.Post(Dropped(reason, error)))
 
-            log.Debug("Subscribing to {Stream} from checkpoint {Checkpoint}", stream, state.Checkpoint)
+        log.Debug("Subscribing to {Stream} from checkpoint {Checkpoint}", stream, state.Checkpoint)
 
-            let lastCheckpoint =
-                match state.Checkpoint with
-                | Checkpoint.StreamStart -> StreamCheckpoint.StreamStart
-                | Checkpoint.StreamPosition pos -> Nullable(pos)
+        let lastCheckpoint =
+            match state.Checkpoint with
+            | Checkpoint.StreamStart -> StreamCheckpoint.StreamStart
+            | Checkpoint.StreamPosition pos -> Nullable(pos)
 
-            let streamName = FsCodec.StreamName.toString stream
+        let streamName = FsCodec.StreamName.toString stream
 
-            let subscription =
-                conn.SubscribeToStreamFrom
-                    (stream = streamName,
-                     lastCheckpoint = lastCheckpoint,
-                     settings = settings,
-                     eventAppeared = eventAppreared,
-                     subscriptionDropped = subscriptionDropped,
-                     userCredentials = creds)
+        let subscription =
+            conn.SubscribeToStreamFrom
+                (settings = settings,
+                 stream = streamName,
+                 lastCheckpoint = lastCheckpoint,
+                 eventAppeared = eventAppreared,
+                 subscriptionDropped = subscriptionDropped,
+                 userCredentials = creds)
 
-            mailbox.Post(Subscribed subscription)
-        }
+        mailbox.Post(Subscribed subscription)
 
     let evolve (mailbox: SubscriptionMailbox): SubscriptionState -> SubscriptionMessage -> SubscriptionState =
         fun state msg ->
@@ -95,7 +93,7 @@ type EventStoreDBSubscription(eventStoreDBConfig: EventStoreDBConfig,
             | Subscribe ->
                 match state.SubscriptionStatus with
                 | SubscriptionStatus.Unsubscribed ->
-                    Async.Start(subscribe state mailbox, state.CancellationToken)
+                    subscribe state mailbox
                     state
                 | _ -> state
             | Subscribed _ ->
@@ -123,20 +121,20 @@ type EventStoreDBSubscription(eventStoreDBConfig: EventStoreDBConfig,
 
     let start (initialState: SubscriptionState) =
         let mailbox =
-            SubscriptionMailbox.Start(fun inbox ->
+            SubscriptionMailbox.Start((fun inbox ->
                 AsyncSeq.initInfiniteAsync (fun _ -> inbox.Receive())
                 |> AsyncSeq.fold (evolve inbox) initialState
-                |> Async.Ignore)
+                |> Async.Ignore), cancellationToken = initialState.CancellationToken)
 
         mailbox.Post(Subscribe)
         mailbox
 
-    let rec loop (mailbox: SubscriptionMailbox) =
+    let rec watch (mailbox: SubscriptionMailbox) =
         async {
             let! state = mailbox.PostAndAsyncReply(GetState)
             log.Debug("Stream {Stream} is at checkpoint {Checkpoint}", stream, state.Checkpoint)
             do! Async.Sleep 10000
-            return! loop mailbox
+            return! watch mailbox
         }
 
     member _.SubscribeAsync(checkpoint: Checkpoint, token: CancellationToken) =
@@ -147,5 +145,5 @@ type EventStoreDBSubscription(eventStoreDBConfig: EventStoreDBConfig,
                   SubscriptionStatus = SubscriptionStatus.Unsubscribed }
 
             let mailbox = start initialState
-            do! loop mailbox
+            do! watch mailbox
         }

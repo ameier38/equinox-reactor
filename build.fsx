@@ -71,6 +71,10 @@ BuildTask.create "PublishReader" [] {
     publish "Reader"
 }
 
+BuildTask.create "PublishIntegrationTests" [] {
+    publish "IntegrationTests"
+}
+
 BuildTask.create "BuildClient" [] {
     Npm.run "build" id
 }

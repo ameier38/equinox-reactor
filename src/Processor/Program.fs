@@ -31,22 +31,19 @@ let main _ =
             .WriteTo.Seq(seqConfig.Url)
             .CreateLogger()
     Log.Logger <- logger
-    try
-        let store = EventStoreDBStreamStore(eventStoreConfig, streamConfig, logger)
-        let api: WebPart =
-            Remoting.createApi()
-            |> Remoting.fromValue (Api.processorApi store)
-            |> Remoting.buildWebPart
-        let app: WebPart =
-            choose [
-                path "/heathz" >=> OK "Healthy!"
-                OPTIONS >=> setCORsHeaders serverConfig.ClientUrl >=> OK "CORS allowed"
-                setCORsHeaders serverConfig.ClientUrl >=> api
-            ]
-        let bindings = [HttpBinding.createSimple HTTP serverConfig.Host serverConfig.Port ]
-        let suaveConfig = { defaultConfig with bindings = bindings }
-        startWebServer suaveConfig app
-    with ex ->
-        Log.Error(ex, "Error!")
+    let store = EventStoreDBStreamStore(eventStoreConfig, streamConfig, logger)
+    let api: WebPart =
+        Remoting.createApi()
+        |> Remoting.fromValue (Api.processorApi store)
+        |> Remoting.buildWebPart
+    let app: WebPart =
+        choose [
+            path "/heathz" >=> OK "Healthy!"
+            OPTIONS >=> setCORsHeaders serverConfig.ClientUrl >=> OK "CORS allowed"
+            setCORsHeaders serverConfig.ClientUrl >=> api
+        ]
+    let bindings = [HttpBinding.createSimple HTTP serverConfig.Host serverConfig.Port ]
+    let suaveConfig = { defaultConfig with bindings = bindings }
+    startWebServer suaveConfig app
     Log.CloseAndFlush()
     0 // return an integer exit code

@@ -20,21 +20,18 @@ let main _ =
             .WriteTo.Seq(seqConfig.Url)
             .CreateLogger()
     Log.Logger <- logger
-    try
-        let documentStore = Store.LiteDBDocumentStore(liteDBConfig)
-        let cache = Cache.RedisCache(redisConfig)
-        let vehicleOverviewReactor = Reactor.VehicleOverviewReactor(documentStore, eventStoreDBConfig, streamConfig)
-        let vehicleCountReactor = Reactor.VehicleCountReactor(cache, eventStoreDBConfig, streamConfig)
-        use cancellation = new CancellationTokenSource()
-        Console.CancelKeyPress |> Event.add (fun _ ->
-            Log.Information("shutting down...")
-            cancellation.Cancel())
-        Async.Parallel
-            [ vehicleOverviewReactor.StartAsync(cancellation.Token)
-              vehicleCountReactor.StartAsync(cancellation.Token) ]
-        |> Async.Ignore
-        |> Async.RunSynchronously
-    with ex ->
-        Log.Error(ex, "Error!")
+    let documentStore = Store.LiteDBDocumentStore(liteDBConfig)
+    let cache = Cache.RedisCache(redisConfig)
+    let vehicleOverviewReactor = Reactor.VehicleOverviewReactor(documentStore, eventStoreDBConfig, streamConfig)
+    let vehicleCountReactor = Reactor.VehicleCountReactor(cache, eventStoreDBConfig, streamConfig)
+    use cancellation = new CancellationTokenSource()
+    Console.CancelKeyPress |> Event.add (fun _ ->
+        Log.Information("shutting down...")
+        cancellation.Cancel())
+    Async.Parallel
+        [ vehicleOverviewReactor.StartAsync(cancellation.Token)
+          vehicleCountReactor.StartAsync(cancellation.Token) ]
+    |> Async.Ignore
+    |> Async.RunSynchronously
     Log.CloseAndFlush()
     0 // return an integer exit code

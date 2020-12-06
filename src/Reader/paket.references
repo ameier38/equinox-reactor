@@ -6,3 +6,4 @@ Serilog
 Serilog.Sinks.Console
 Serilog.Sinks.Seq
 StackExchange.Redis
+Suave

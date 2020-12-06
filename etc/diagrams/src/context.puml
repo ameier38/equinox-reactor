@@ -1,0 +1,28 @@
+@startuml context
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+Person(user, "User of vehicle management system")
+
+System_Boundary(system, "Vehicle Management System") {
+    Container(web_server, "Web Server", "NGINX", "Services static content (SPA)")
+    Container(spa, "SPA", "F#, Fable, React")
+    Container(processor, "Processor", "F#, Equinox, Suave, Fable.Remoting", "Handles commands")
+    Container(reactor, "Reactor", "F#", "Maintains read models")
+    Container(reader, "Reader", "F#, Suave, Fable.Remoting", "Handles queries")
+    ContainerDb(eventstore, "EventStoreDB", "Stores raw events")
+    ContainerDb(redis, "Redis", "Stores 'Vehicle Count' read model")
+    ContainerDb(litedb, "LiteDB", "Stores 'Vehicle Overview' read model")
+}
+
+Rel(user, web_server, "HTTP", "Requests site")
+Rel(user, spa, "HTTP", "Interacts with site")
+Rel(web_server, spa,"Delivers")
+Rel(spa, processor, "HTTP", "Send commands to")
+Rel(spa, reader, "HTTP", "Sends queries to")
+Rel(processor, eventstore, "TCP", "Stores events in")
+Rel(reactor, eventstore, "TCP", "Subscribes to events from")
+Rel(reactor, redis, "TCP", "Maintains 'Vehicle Count' in")
+Rel(reactor, litedb, "IO", "Maintains 'Vehicle Overview' in")
+Rel(reader, redis, "TCP", "Reads 'Vehicle Count' from")
+Rel(reader, litedb, "IO", "Reads 'Vehicle Overview' from")
+
+@enduml

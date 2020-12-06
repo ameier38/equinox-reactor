@@ -18,6 +18,7 @@ RUN dotnet paket install
 # copy everything else and build
 COPY build.fsx .
 COPY src src
+RUN dotnet fake build -t TestUnits
 RUN dotnet fake build -t PublishReactor
 
 FROM mcr.microsoft.com/dotnet/core/runtime:3.1 as runner

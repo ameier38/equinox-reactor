@@ -109,6 +109,22 @@ services:
     image: browserless/chrome:1.42.0-chrome-stable
     ports:
       - "3001:3000"
+  test-integrations:
+    build:
+      context: .
+      dockerfile: docker/tester.Dockerfile
+    environment:
+      CLIENT_SCHEME: http
+      CLIENT_HOST: client
+      CLIENT_PORT: 3000
+      CHROME_SCHEME: http
+      CHROME_HOST: chrome
+      CHROME_PORT: 3000
+      SCREENSHOT_DIR: /var/screenshots
+    volumes:
+      - ./screenshots:/var/screenshots
+    depends_on:
+      - chrome
 
 volumes:
   litedb:

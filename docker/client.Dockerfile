@@ -3,10 +3,10 @@ FROM mcr.microsoft.com/dotnet/core/sdk:3.1 as builder
 # set build variables
 ARG PROCESSOR_SCHEME=http
 ARG PROCESSOR_HOST=localhost
-ARG PROCESSOR_PORT=8081
+ARG PROCESSOR_PORT=5001
 ARG READER_SCHEME=http
 ARG READER_HOST=localhost
-ARG READER_PORT=8082
+ARG READER_PORT=5002
 
 WORKDIR /app
 

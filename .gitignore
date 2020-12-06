@@ -7,4 +7,6 @@ node_modules
 paket-files
 obj
 bin
+out
 dist
+screenshots

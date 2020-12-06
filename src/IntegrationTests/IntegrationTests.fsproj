@@ -3,6 +3,8 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
+    <!-- ref: https://github.com/jsakamoto/nupkg-selenium-webdriver-chromedriver#how-to-include-the-driver-file-into-published-files -->
+    <PublishChromeDriver>true</PublishChromeDriver>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Config.fs" />

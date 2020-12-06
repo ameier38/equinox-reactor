@@ -1,5 +1,8 @@
 namespace Shared
 
+open System
+open System.IO
+
 type StreamConfig =
     { VehicleCategory: string }
     static member Load() =
@@ -45,7 +48,7 @@ type LiteDBConfig =
     { Filename: string
       VehicleOverviewCollection: string }
     static member Load() =
-        { Filename = Env.getEnv "LITEDB_FILENAME" "dealership.db"
+        { Filename = Env.getEnv "LITEDB_FILENAME" (Path.Combine(AppContext.BaseDirectory,"dealership.db"))
           VehicleOverviewCollection = "vehicles" }
 
 type SeqConfig =

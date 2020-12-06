@@ -3,11 +3,12 @@ open canopy.runner.classic
 open canopy.types
 open OpenQA.Selenium.Chrome
 
-let chromeConfig = Config.ChromeConfig.Load()
-let clientConfig = Config.ClientConfig.Load()
+let canopyConfig = Config.CanopyConfig.Load()
 
-canopy.configuration.chromeDir <- chromeConfig.DriverDir
-canopy.configuration.webdriverPort <- Some chromeConfig.DriverPort
+canopy.configuration.chromeDir <- canopyConfig.DriverDir
+canopy.configuration.webdriverPort <- Some canopyConfig.DriverPort
+canopy.configuration.failScreenshotPath <- canopyConfig.ScreenshotDir
+canopy.configuration.failureScreenshotsEnabled <- true
 
 type StartMode =
     | Headfull
@@ -15,32 +16,51 @@ type StartMode =
 
 let startBrowser (startMode:StartMode) =
     let browserStartMode =
+        let chromeOptions = ChromeOptions()
+        chromeOptions.AddArgument("--no-sandbox")
         match startMode with
-        | Headfull -> Chrome
+        | Headfull -> ChromeWithOptions chromeOptions
         | Headless ->
             let chromeOptions = ChromeOptions()
             chromeOptions.AddArgument("--no-sandbox")
             chromeOptions.AddArgument("--headless")
-            Remote(chromeConfig.DriverUrl, chromeOptions.ToCapabilities())
+            Remote(canopyConfig.DriverUrl, chromeOptions.ToCapabilities())
     start browserStartMode
+    pin Left 
+    resize (1000, 600)
+
 
 let startApp () =
-    url clientConfig.Url
+    url canopyConfig.ClientUrl
     waitForElement "#app"
+
+let addVehicle year make model =
+    describe (sprintf "adding vehicle %s %s %s" year make model)
+    "#make" << make
+    "#model" << model
+    "#year" << year
+    click "Submit"
+
+let removeVehicle () =
+    click (first "Remove")
 
 "test add vehicle" &&& fun _ ->
     startApp()
-    describe "count vehicles"
+    sleep 10
     let vehicleCount = read "#count" |> int
+    describe (sprintf "vehicle count should be %i" vehicleCount)
     count ".vehicle" vehicleCount
-    describe "add vehicle"
-    "#make" << "Toyota"
-    "#model" << "Tacoma"
-    "#year" << "2020"
-    click "Submit"
+    addVehicle "2020" "Toyota" "Tacoma"
+    describe (sprintf "vehicle count should be %i" (vehicleCount + 1))
     "#count" == (vehicleCount + 1 |> string)
-    count ".vehicleCount" (vehicleCount + 1)
-
+    count ".vehicle" (vehicleCount + 1)
+    sleep 2
+    addVehicle "2021" "Tesla" "Cybertruck"
+    describe (sprintf "vehicle count should be %i" (vehicleCount + 2))
+    "#count" == (vehicleCount + 2 |> string)
+    count ".vehicle" (vehicleCount + 2)
+    removeVehicle()
+    sleep 10
 
 [<EntryPoint>]
 let main argv =
@@ -48,11 +68,13 @@ let main argv =
         match argv with
         | [|"--headless"|] -> Headless
         | _ -> Headfull
+    let mutable failed = false
     try
         startBrowser startMode
         run()
+        onFail (fun _ -> failed <- true)
         quit()
-        0
+        if failed then 1 else 0
     with ex ->
         printfn "Error! %A" ex
         quit()

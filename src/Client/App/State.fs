@@ -63,7 +63,6 @@ let removeVehicle (vehicleId:string) =
                 { VehicleId = vehicleId }
             match! processorApi.removeVehicle(req) with
             | RemoveVehicleResponse.Success msg ->
-                console.info msg
                 return msg
             | err ->
                 console.error err

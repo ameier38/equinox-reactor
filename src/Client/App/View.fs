@@ -84,11 +84,11 @@ let vehicleCount =
                 Html.h2 [
                     Html.text "Vehicle Count:"
                     Html.span [
-                        prop.id "count"
                         prop.text (if props.isLoading then " Loading..." else "")
                     ]
                 ] 
                 Html.h1 [
+                    prop.id "count"
                     prop.style [
                         style.fontSize 60
                         style.textAlign.center
