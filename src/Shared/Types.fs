@@ -7,7 +7,7 @@ type [<Measure>] vehicleId
 type VehicleId = Guid<vehicleId>
 
 module VehicleId =
-    let toStringN (vehicleId:VehicleId) = let value = UMX.untag vehicleId in value.ToString("N")
+    let toString (vehicleId:VehicleId) = let value = UMX.untag vehicleId in value.ToString("N")
     let parse (s:string) =
         match Guid.TryParse(s) with
         | true, value -> UMX.tag<vehicleId> value

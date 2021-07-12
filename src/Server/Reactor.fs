@@ -64,10 +64,10 @@ type Service(store:Store.LiveCosmosStore, inventoryService:Inventory.Service) =
                     try
                         let stats = Stats(log, System.TimeSpan.FromMinutes 1., System.TimeSpan.FromMinutes 5.)
                         let sink = StreamsProjector.Start(log, 10, 1, handle, stats, System.TimeSpan.FromMinutes 1.)
-                        let mapContent docs =
-                             docs
-                             |> Seq.collect EquinoxNewtonsoftParser.enumStreamEvents
-                        let observer = CosmosStoreSource.CreateObserver(log, sink.StartIngester, mapContent)
+                        let mapContent docs = Seq.empty
+//                             docs
+//                             |> Seq.collect EquinoxNewtonsoftParser.enumStreamEvents
+                        use observer = CosmosStoreSource.CreateObserver(log, sink.StartIngester, mapContent)
                         let pipeline = CosmosStoreSource.Run(log, store.StoreContainer, store.LeaseContainer, "Reactor", observer, startFromTail=false)
                         Async.Start(pipeline, cts.Token)
                         return! sink.AwaitCompletion()

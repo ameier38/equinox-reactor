@@ -5,6 +5,7 @@ open Shared.Types
 open Serilog
 
 let [<Literal>] private Category = "Vehicle"
+let streamName id = FsCodec.StreamName.create Category (VehicleId.toString id)
 
 type Command =
     | AddVehicle of Vehicle
@@ -43,7 +44,7 @@ let interpret
     (vehicleId: VehicleId)
     : Command -> State -> Event list =
     fun (command:Command) (state:State) ->
-        let vehicleIdStr = VehicleId.toStringN vehicleId
+        let vehicleIdStr = VehicleId.toString vehicleId
         match state, command with
         | DoesNotExist, AddVehicle vehicle ->
             let vehicleAdded = VehicleAdded {| vehicle = vehicle |}
@@ -56,16 +57,10 @@ let interpret
             let vehicleRemoved = VehicleRemoved
             [vehicleRemoved]
             
-type Service (store:Store.LiveCosmosStore) =
-    let log = Log.ForContext<Service>()
-    let cacheStrategy = CachingStrategy.NoCaching
-    let accessStrategy = AccessStrategy.Unoptimized
-    let category = CosmosStoreCategory(store.Context, Event.codec, Fold.fold, Fold.initial, cacheStrategy, accessStrategy)
+type Service (resolve:VehicleId -> Equinox.Decider<Event,State>) =
     
     let transact vehicleId command =
-        let streamName = FsCodec.StreamName.create Category (VehicleId.toStringN vehicleId)
-        let stream = category.Resolve(streamName)
-        let decider = Equinox.Decider(log, stream, maxAttempts=3)
+        let decider = resolve vehicleId
         decider.Transact(interpret vehicleId command)
     
     member _.AddVehicle(vehicleId, vehicle) =
@@ -73,3 +68,10 @@ type Service (store:Store.LiveCosmosStore) =
         
     member _.RemoveVehicle(vehicleId) =
         transact vehicleId RemoveVehicle
+        
+module Cosmos =
+    let cacheStrategy = CachingStrategy.NoCaching
+    let accessStrategy = AccessStrategy.Unoptimized
+    let create context =
+        let category = CosmosStoreCategory(context, Event.codec, Fold.fold, Fold.initial, cacheStrategy, accessStrategy)
+        Service(streamName >> category.Resolve >> Equinox.createDecider)

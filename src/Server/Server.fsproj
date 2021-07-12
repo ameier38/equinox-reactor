@@ -11,7 +11,7 @@
     <Compile Include="Vehicle.fs" />
     <Compile Include="Inventory.fs" />
     <Compile Include="Reactor.fs" />
-    <Compile Include="Hub.fs" />
+<!--    <Compile Include="Hub.fs" />-->
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

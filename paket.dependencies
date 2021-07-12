@@ -1,6 +1,7 @@
 version 5.257.0
 storage none
 source https://api.nuget.org/v3/index.json
+framework: net5.0
 
 nuget canopy
 nuget Equinox
@@ -15,8 +16,6 @@ nuget Fable.SignalR.Elmish
 nuget Feliz
 nuget Feliz.UseElmish
 nuget FsCodec 2.0.0
-nuget FsCodec.NewtonsoftJson
-nuget FSharp.UMX
 nuget Microsoft.AspNetCore
 nuget Microsoft.AspNetCore.StaticFiles
 nuget Microsoft.AspNetCore.SignalR.Core
@@ -27,7 +26,6 @@ nuget Serilog.AspNetCore
 nuget Serilog.Sinks.Console
 nuget Serilog.Sinks.Seq
 nuget Selenium.WebDriver.ChromeDriver 91.0.4472.10100
-nuget TypeShape
 
 group Build
     storage none

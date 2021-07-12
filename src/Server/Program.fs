@@ -31,22 +31,22 @@ type Pinger (hub:FableHubCaller<Action,Response>) =
 
 let configureServices (config:Config) (services:IServiceCollection) =
     services
-        .AddSignalR(Server.Hub.settings)
+//        .AddSignalR(Server.Hub.settings)
         .AddSingleton<Server.Store.LiveCosmosStore>(fun s ->
             Server.Store.LiveCosmosStore(config.CosmosDBConfig))
         .AddSingleton<Server.Vehicle.Service>(fun s ->
             let cosmosStore = s.GetRequiredService<Server.Store.LiveCosmosStore>()
-            Server.Vehicle.Service(cosmosStore))
+            Server.Vehicle.Cosmos.create(cosmosStore.Context))
         .AddSingleton<Server.Inventory.Service>(fun s ->
             let cosmosStore = s.GetRequiredService<Server.Store.LiveCosmosStore>()
-            Server.Inventory.Service(cosmosStore))
+            Server.Inventory.Cosmos.create(cosmosStore.Context))
 //        .AddHostedService<Pinger>(fun s ->
 //            let hub = s.GetRequiredService<FableHubCaller<Action,Response>>()
 //            Pinger(hub))
-//        .AddHostedService<Server.Reactor.Service>(fun s ->
-//            let cosmosStore = s.GetRequiredService<Server.Store.LiveCosmosStore>()
-//            let inventoryService = s.GetRequiredService<Server.Inventory.Service>()
-//            Server.Reactor.Service(cosmosStore, inventoryService))
+        .AddHostedService<Server.Reactor.Service>(fun s ->
+            let cosmosStore = s.GetRequiredService<Server.Store.LiveCosmosStore>()
+            let inventoryService = s.GetRequiredService<Server.Inventory.Service>()
+            Server.Reactor.Service(cosmosStore, inventoryService))
         |> ignore
         
 let configureApp (appBuilder:IApplicationBuilder) =
@@ -55,7 +55,7 @@ let configureApp (appBuilder:IApplicationBuilder) =
         .UseDefaultFiles()
         // NB: service static files from wwwroot dir
         .UseStaticFiles()
-        .UseSignalR(Server.Hub.settings)
+//        .UseSignalR(Server.Hub.settings)
         |> ignore
 
 [<EntryPoint>]

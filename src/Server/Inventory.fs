@@ -5,6 +5,7 @@ open Shared.Types
 open Serilog
 
 let [<Literal>] private Category = "Inventory"
+let streamName () = FsCodec.StreamName.create Category "0"
 
 type Command =
     | Update of added:InventoriedVehicle [] * removed:VehicleId []
@@ -36,31 +37,30 @@ let interpret command _state =
     match command with
     | Update (added, removed) -> [Updated {| added = added; removed = removed |}]
     
-type Service (store:Store.LiveCosmosStore) =
-    let log = Log.ForContext<Service>()
-    let streamName = FsCodec.StreamName.create Category "0"
-    let cacheStrategy = CachingStrategy.NoCaching
-    let accessStrategy = AccessStrategy.Unoptimized
-    let category = CosmosStoreCategory(store.Context, Event.codec, Fold.fold, Fold.initial, cacheStrategy, accessStrategy)
+type Service (resolve:unit -> Equinox.Decider<Event,Inventory>) =
     
     member _.Update(added:InventoriedVehicle[], removed:VehicleId[]) =
-        let stream = category.Resolve(streamName)
-        let decider = Equinox.Decider(log, stream, maxAttempts=3)
+        let decider = resolve ()
         let command = Update (added, removed)
         decider.Transact(interpret command)
         
     member _.Read() =
-        async {
-            let vehicle1: InventoriedVehicle =
-                { vehicleId = VehicleId.create()
-                  vehicle = { make = "Tesla"; model = "S"; year = 2020 } }
-            let vehicle2: InventoriedVehicle =
-                { vehicleId = VehicleId.create()
-                  vehicle = { make = "Toyota"; model = "Tacoma"; year = 2017 } }
-            let vehicles = [| vehicle1; vehicle2 |]
-            return { vehicles = vehicles ; count = vehicles.Length }
-        }
-//        let stream = category.Resolve(streamName)
-//        let decider = Equinox.Decider(log, stream, maxAttempts=3)
-//        decider.Query(id)
+//        async {
+//            let vehicle1: InventoriedVehicle =
+//                { vehicleId = VehicleId.create()
+//                  vehicle = { make = "Tesla"; model = "S"; year = 2020 } }
+//            let vehicle2: InventoriedVehicle =
+//                { vehicleId = VehicleId.create()
+//                  vehicle = { make = "Toyota"; model = "Tacoma"; year = 2017 } }
+//            let vehicles = [| vehicle1; vehicle2 |]
+//            return { vehicles = vehicles ; count = vehicles.Length }
+//        }
+        let decider = resolve ()
+        decider.Query(id)
         
+module Cosmos =
+    let cacheStrategy = CachingStrategy.NoCaching
+    let accessStrategy = AccessStrategy.Unoptimized
+    let create context =
+        let category = CosmosStoreCategory(context, Event.codec, Fold.fold, Fold.initial, cacheStrategy, accessStrategy)
+        Service(streamName >> category.Resolve >> Equinox.createDecider)
