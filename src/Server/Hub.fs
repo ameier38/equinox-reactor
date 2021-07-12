@@ -22,24 +22,24 @@ module Settings =
                     return Response.CommandSucceeded
             }
             
-    let invoke (action:Action) (hubCtx:FableHub) =
-        let vehicleService = hubCtx.Services.GetService<Vehicle.Service>()
-        let inventoryService = hubCtx.Services.GetService<Inventory.Service>()
-        let update' = update vehicleService inventoryService
-        Async.StartAsTask(update' action)
-        
-    let send (action:Action) (hubCtx:FableHub<Action,Response>) =
-        async {
-            Log.Information($"action: {action}")
-            let vehicleService = hubCtx.Services.GetRequiredService<Vehicle.Service>()
-            let inventoryService = hubCtx.Services.GetRequiredService<Inventory.Service>()
+    let invoke (vehicleService:Vehicle.Service) (inventoryService:Inventory.Service) =
+        fun (action:Action) (_hubCtx:FableHub) ->
             let update' = update vehicleService inventoryService
-            let! response = update' action
-            return hubCtx.Clients.Caller.Send(response)
-        } |> Async.StartAsTask :> Task
+            Async.StartAsTask(update' action)
+        
+    let send (vehicleService:Vehicle.Service) (inventoryService:Inventory.Service) =
+        fun (action:Action) (hubCtx:FableHub<Action,Response>) ->
+            async {
+                let update' = update vehicleService inventoryService
+                let! response = update' action
+                return hubCtx.Clients.Caller.Send(response)
+            } |> Async.StartAsTask :> Task
             
-let settings: SignalR.Settings<Action,Response> =
+let createSettings
+        (vehicleService:Vehicle.Service)
+        (inventoryService:Inventory.Service)
+    : SignalR.Settings<Action,Response> =
     { EndpointPattern = Endpoints.Root
-      Send = Settings.send
-      Invoke = Settings.invoke
+      Send = Settings.send vehicleService inventoryService
+      Invoke = Settings.invoke vehicleService inventoryService
       Config = None }

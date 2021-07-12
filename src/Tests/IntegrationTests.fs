@@ -1,4 +1,6 @@
-﻿open canopy.classic
+﻿module Tests.IntegrationTests
+
+open canopy.classic
 open canopy.runner.classic
 open canopy.types
 open OpenQA.Selenium.Chrome
@@ -61,21 +63,3 @@ let removeVehicle () =
     count ".vehicle" (vehicleCount + 2)
     removeVehicle()
     sleep 10
-
-[<EntryPoint>]
-let main argv =
-    let startMode =
-        match argv with
-        | [|"--headless"|] -> Headless
-        | _ -> Headfull
-    let mutable failed = false
-    try
-        startBrowser startMode
-        run()
-        onFail (fun _ -> failed <- true)
-        quit()
-        if failed then 1 else 0
-    with ex ->
-        printfn "Error! %A" ex
-        quit()
-        1

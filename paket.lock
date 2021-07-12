@@ -70,7 +70,7 @@ NUGET
       Fable.Browser.Dom (>= 2.4.4)
       Fable.Core (>= 3.2.7)
       FSharp.Core (>= 4.7.2)
-    Fable.Remoting.Json (2.17)
+    Fable.Remoting.Json (2.18)
       FSharp.Core (>= 4.7.2)
       Newtonsoft.Json (>= 12.0.2)
     Fable.Remoting.MsgPack (1.13)

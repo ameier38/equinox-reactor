@@ -1,27 +1,29 @@
 module Server.Inventory
 
 open Equinox.CosmosStore
+open FsCodec.NewtonsoftJson
 open Shared.Types
-open Serilog
 
 let [<Literal>] private Category = "Inventory"
 let streamName () = FsCodec.StreamName.create Category "0"
 
 type Command =
-    | Update of added:InventoriedVehicle [] * removed:VehicleId []
+    | Update of version:int64 * added:InventoriedVehicle [] * removed:VehicleId []
 
 type Event =
-    | Updated of {| added:InventoriedVehicle []; removed:VehicleId [] |}
+    | Updated of {| version:int64; added:InventoriedVehicle []; removed:VehicleId [] |}
     interface TypeShape.UnionContract.IUnionContract
 
 module Event =
-    let codec = FsCodec.NewtonsoftJson.Codec.Create<Event>()
+    let codec = Codec.Create<Event>()
+
+type State = { version: int64; vehicles: InventoriedVehicle[]; count: int }
 
 module Fold =
 
-    let initial = { vehicles = Array.empty; count = 0 }
+    let initial = { version = 0L; vehicles = Array.empty; count = 0 }
 
-    let evolve (state:Inventory) (event:Event): Inventory =
+    let evolve (state:State) (event:Event): State =
         match event with
         | Updated payload ->
             { state with
@@ -31,20 +33,24 @@ module Fold =
                     |> Array.append payload.added
                 count = state.count - payload.removed.Length + payload.added.Length }
             
-    let fold: Inventory -> seq<Event> -> Inventory = Seq.fold evolve
+    let fold: State -> seq<Event> -> State = Seq.fold evolve
 
-let interpret command _state =
+let interpret (command:Command) (state:State) =
     match command with
-    | Update (added, removed) -> [Updated {| added = added; removed = removed |}]
+    | Update (version, added, removed) ->
+        if version > state.version then
+            [Updated {| version = version; added = added; removed = removed |}]
+        else
+            []
     
-type Service (resolve:unit -> Equinox.Decider<Event,Inventory>) =
+type Service (resolve:unit -> Equinox.Decider<Event,State>) =
     
-    member _.Update(added:InventoriedVehicle[], removed:VehicleId[]) =
+    member _.Update(version:int64, added:InventoriedVehicle[], removed:VehicleId[]) =
         let decider = resolve ()
-        let command = Update (added, removed)
+        let command = Update (version, added, removed)
         decider.Transact(interpret command)
         
-    member _.Read() =
+    member _.Read(): Async<Inventory> =
 //        async {
 //            let vehicle1: InventoriedVehicle =
 //                { vehicleId = VehicleId.create()
@@ -56,11 +62,11 @@ type Service (resolve:unit -> Equinox.Decider<Event,Inventory>) =
 //            return { vehicles = vehicles ; count = vehicles.Length }
 //        }
         let decider = resolve ()
-        decider.Query(id)
+        decider.Query(fun s -> { vehicles = s.vehicles; count = s.count })
         
 module Cosmos =
     let cacheStrategy = CachingStrategy.NoCaching
     let accessStrategy = AccessStrategy.Unoptimized
-    let create context =
+    let createService context =
         let category = CosmosStoreCategory(context, Event.codec, Fold.fold, Fold.initial, cacheStrategy, accessStrategy)
         Service(streamName >> category.Resolve >> Equinox.createDecider)
