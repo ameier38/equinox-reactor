@@ -1,8 +1,7 @@
 module Server.Inventory
 
 open Equinox.CosmosStore
-open Shared.Types
-open Serilog
+open Types
 
 let [<Literal>] private Category = "Inventory"
 let streamName () = FsCodec.StreamName.create Category "0"

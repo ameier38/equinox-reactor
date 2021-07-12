@@ -1,8 +1,8 @@
 module Server.Vehicle
 
 open Equinox.CosmosStore
-open Shared.Types
 open Serilog
+open Types
 
 let [<Literal>] private Category = "Vehicle"
 let streamName id = FsCodec.StreamName.create Category (VehicleId.toString id)

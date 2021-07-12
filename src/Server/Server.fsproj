@@ -7,15 +7,12 @@
   <ItemGroup>
     <Compile Include="Infrastructure.fs" />
     <Compile Include="Config.fs" />
+    <Compile Include="Types.fs" />
     <Compile Include="Store.fs" />
     <Compile Include="Vehicle.fs" />
     <Compile Include="Inventory.fs" />
     <Compile Include="Reactor.fs" />
-<!--    <Compile Include="Hub.fs" />-->
     <Compile Include="Program.fs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Shared\Shared.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

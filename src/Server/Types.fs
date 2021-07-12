@@ -1,4 +1,4 @@
-﻿module Shared.Types
+﻿module Server.Types
 
 open FSharp.UMX
 open System

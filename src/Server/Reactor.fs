@@ -3,10 +3,10 @@
 open Microsoft.Extensions.Hosting
 open Propulsion.CosmosStore
 open Propulsion.Streams
-open Shared.Types
 open Serilog
 open System.Threading
 open System.Threading.Tasks
+open Types
 
 [<RequireQualifiedAccess>]
 type Outcome = Completed | Skipped

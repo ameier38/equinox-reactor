@@ -3,29 +3,16 @@ storage none
 source https://api.nuget.org/v3/index.json
 framework: net5.0
 
-nuget canopy
 nuget Equinox
 nuget Equinox.CosmosStore
-nuget Expecto
-nuget Fable.Core
-nuget Fable.Browser.Dom
-nuget Fable.Elmish
-nuget Fable.SignalR
-nuget Fable.SignalR.AspNetCore
-nuget Fable.SignalR.Elmish
-nuget Feliz
-nuget Feliz.UseElmish
 nuget FsCodec 2.0.0
 nuget Microsoft.AspNetCore
-nuget Microsoft.AspNetCore.StaticFiles
-nuget Microsoft.AspNetCore.SignalR.Core
 nuget Propulsion 2.11.0-rc2
 nuget Propulsion.CosmosStore 2.11.0-rc2
 nuget Serilog
 nuget Serilog.AspNetCore
 nuget Serilog.Sinks.Console
 nuget Serilog.Sinks.Seq
-nuget Selenium.WebDriver.ChromeDriver 91.0.4472.10100
 
 group Build
     storage none
