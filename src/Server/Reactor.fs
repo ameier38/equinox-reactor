@@ -1,11 +1,9 @@
 ﻿module Server.Reactor
 
-open Microsoft.Extensions.Hosting
 open Propulsion.CosmosStore
 open Propulsion.Streams
 open Serilog
-open System.Threading
-open System.Threading.Tasks
+open System
 open Types
 
 [<RequireQualifiedAccess>]
@@ -28,14 +26,17 @@ type Stats(log, statsInterval, stateInterval) =
         if completed <> 0 || skipped <> 0 then
             log.Information(" Completed {completed} Skipped {skipped}", completed, skipped)
             completed <- 0; skipped <- 0
-
-type Service(store:Store.LiveCosmosStore, inventoryService:Inventory.Service) =
-    let log = Log.ForContext<Service>()
-    let cts = new CancellationTokenSource()
-
-    let handle (stream, span: StreamSpan<_>) =
-        async {
-            try
+            
+module Handler =
+            
+    let mapToStreamItems docs : StreamEvent<_> seq =
+        docs
+        |> Seq.collect EquinoxNewtonsoftParser.enumStreamEvents
+        
+    let handle
+        (inventoryService:Inventory.Service) =
+        fun (stream, span: StreamSpan<_>) ->
+            async {
                 match stream with
                 | Vehicle.Event.MatchesCategory vehicleId ->
                     let events = Vehicle.Event.decode span
@@ -52,30 +53,15 @@ type Service(store:Store.LiveCosmosStore, inventoryService:Inventory.Service) =
                     return SpanResult.AllProcessed, Outcome.Completed
                 | _ ->
                     return SpanResult.AllProcessed, Outcome.Skipped
-            with ex ->
-                log.Error(ex, "Error handing stream")
-                return raise ex
-        }
-
-    interface IHostedService with
-        member _.StartAsync(ct:CancellationToken) =
-            let work =
-                async {
-                    try
-                        let stats = Stats(log, System.TimeSpan.FromMinutes 1., System.TimeSpan.FromMinutes 5.)
-                        let sink = StreamsProjector.Start(log, 10, 1, handle, stats, System.TimeSpan.FromMinutes 1.)
-                        let mapContent docs = Seq.empty
-//                             docs
-//                             |> Seq.collect EquinoxNewtonsoftParser.enumStreamEvents
-                        use observer = CosmosStoreSource.CreateObserver(log, sink.StartIngester, mapContent)
-                        let pipeline = CosmosStoreSource.Run(log, store.StoreContainer, store.LeaseContainer, "Reactor", observer, startFromTail=false)
-                        Async.Start(pipeline, cts.Token)
-                        return! sink.AwaitCompletion()
-                    with ex ->
-                        log.Error(ex, "Error running Reactor")
-                        return raise ex
-                }
-            Async.StartAsTask(work, cancellationToken=ct) :> Task
-        member _.StopAsync(ct:CancellationToken) =
-            let work = async { do cts.Cancel() }
-            Async.StartAsTask(work, cancellationToken=ct) :> Task
+            }
+        
+    let build
+            (store:Store.LiveCosmosStore)
+            (handle:FsCodec.StreamName * StreamSpan<_> -> Async<SpanResult * Outcome>) =
+        let maxReadAhead, maxConcurrentStreams = 2, 8
+        let stats = Stats(Log.Logger, TimeSpan.FromMinutes 1., TimeSpan.FromMinutes 2.)
+        let sink = StreamsProjector.Start(Log.Logger, maxReadAhead, maxConcurrentStreams, handle, stats, TimeSpan.FromMinutes 2.)
+        let pipeline =
+            use observer = CosmosStoreSource.CreateObserver(Log.Logger, sink.StartIngester, mapToStreamItems)
+            CosmosStoreSource.Run(Log.Logger, store.StoreContainer, store.LeaseContainer, "Reactor", observer, startFromTail=false)
+        sink, pipeline

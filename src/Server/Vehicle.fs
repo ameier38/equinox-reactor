@@ -1,7 +1,6 @@
 module Server.Vehicle
 
 open Equinox.CosmosStore
-open Serilog
 open Types
 
 let [<Literal>] private Category = "Vehicle"

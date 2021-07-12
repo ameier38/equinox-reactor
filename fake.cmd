@@ -1,1 +1,0 @@
-dotnet run -p ./src/Build/Build.fsproj %1

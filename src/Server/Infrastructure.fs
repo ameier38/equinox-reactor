@@ -1,4 +1,5 @@
-namespace Server
+[<AutoOpen>]
+module Server.Infrastructure
 
 open System
 open System.IO
@@ -24,3 +25,4 @@ module Log =
 module Equinox =
     let createDecider stream =
         Equinox.Decider(Log.forMetrics (), stream, maxAttempts = 3)
+        

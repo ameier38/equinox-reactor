@@ -14,5 +14,9 @@
     <Compile Include="Reactor.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
-  <Import Project="..\..\.paket\Paket.Restore.targets" />
+  <ItemGroup>
+    <PackageReference Include="Equinox.CosmosStore" Version="3.0.1" />
+    <PackageReference Include="FsCodec.NewtonsoftJson" Version="2.2.0" />
+    <PackageReference Include="Propulsion.CosmosStore" Version="2.11.0-rc2" />
+  </ItemGroup>
 </Project>
