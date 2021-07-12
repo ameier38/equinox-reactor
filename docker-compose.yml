@@ -1,130 +1,15 @@
 version: '3.7'
 
 services:
-  seq:
-    image: datalust/seq:latest
-    environment:
-      ACCEPT_EULA: "Y"
-    ports:
-      - "8000:80"
-      - "5341:5341"
-  eventstore:
-    image: eventstore/eventstore:release-5.0.9
-    environment:
-      EVENTSTORE_START_STANDARD_PROJECTIONS: "True"
-      EVENTSTORE_RUN_PROJECTIONS: All
-    ports:
-      - "2113:2113"
-  redis:
-    image: bitnami/redis:6.0
-    environment:
-      REDIS_PASSWORD: changeit
-    ports:
-      - "6379:6379"
-  processor:
+  app:
     build:
       context: .
-      dockerfile: docker/processor.Dockerfile
-    environment:
-      DEBUG: "true"
-      SEQ_HOST: seq
-      SEQ_PORT: 5341
-      SERVER_HOST: 0.0.0.0
-      SERVER_PORT: 5000
-      CLIENT_SCHEME: http
-      CLIENT_HOST: localhost
-      CLIENT_PORT: 3000
-      EVENTSTORE_SCHEME: tcp
-      EVENTSTORE_HOST: eventstore
-      EVENTSTORE_PORT: 1113
-      EVENTSTORE_USER: admin
-      EVENTSTORE_PASSWORD: changeit
-    ports:
-      - "5001:5000"
-    depends_on:
-      - seq
-      - eventstore
-  reactor:
-    build:
-      context: .
-      dockerfile: docker/reactor.Dockerfile
-    environment:
-      DEBUG: "true"
-      SEQ_HOST: seq
-      SEQ_PORT: 5341
-      EVENTSTORE_SCHEME: tcp
-      EVENTSTORE_HOST: eventstore
-      EVENTSTORE_PORT: 1113
-      LITEDB_FILENAME: /var/lib/litedb/dealership.db
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: changeit
-    volumes:
-      - litedb:/var/lib/litedb
-    depends_on:
-      - seq
-      - eventstore
-      - redis
-  reader:
-    build:
-      context: .
-      dockerfile: docker/reader.Dockerfile
-    environment:
-      DEBUG: "true"
-      SEQ_HOST: seq
-      SEQ_PORT: 5341
-      SERVER_HOST: 0.0.0.0
-      SERVER_PORT: 5000
-      CLIENT_SCHEME: http
-      CLIENT_HOST: localhost
-      CLIENT_PORT: 3000
-      LITEDB_FILENAME: /var/lib/litedb/dealership.db
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: changeit
-    volumes:
-      - litedb:/var/lib/litedb
-    ports:
-      - "5002:5000"
-    depends_on:
-      - seq
-      - redis
-  client:
-    build:
-      context: .
-      dockerfile: docker/client.Dockerfile
       args:
-        PROCESSOR_SCHEME: http
-        PROCESSOR_HOST: localhost
-        PROCESSOR_PORT: 5001
-        READER_SCHEME: http
-        READER_HOST: localhost
-        READER_PORT: 5002
-    ports:
-      - "3000:3000"
-    depends_on:
-      - processor
-      - reader
-  chrome:
-    image: browserless/chrome:1.42.0-chrome-stable
-    ports:
-      - "3001:3000"
-  test-integrations:
-    build:
-      context: .
-      dockerfile: docker/tester.Dockerfile
+        RUNTIME_ID: linux-x64
     environment:
-      CLIENT_SCHEME: http
-      CLIENT_HOST: client
-      CLIENT_PORT: 3000
-      CHROME_SCHEME: http
-      CHROME_HOST: chrome
-      CHROME_PORT: 3000
-      SCREENSHOT_DIR: /var/screenshots
+      APP_ENV: dev
+      SECRETS_DIR: /var/secrets
+    ports:
+      - "5000:5000"
     volumes:
-      - ./screenshots:/var/screenshots
-    depends_on:
-      - chrome
-
-volumes:
-  litedb:
+      - c:/dev/secrets/ameier38/cosmosdb:/var/secrets/cosmosdb

@@ -3,7 +3,7 @@
   "isRoot": true,
   "tools": {
     "fake-cli": {
-      "version": "5.20.4-alpha.1642",
+      "version": "5.20.4",
       "commands": [
         "fake"
       ]
@@ -15,9 +15,27 @@
       ]
     },
     "femto": {
-      "version": "0.8.7",
+      "version": "0.9.0",
       "commands": [
         "femto"
+      ]
+    },
+    "fable": {
+      "version": "3.2.3",
+      "commands": [
+        "fable"
+      ]
+    },
+    "equinox.tool": {
+      "version": "3.0.1",
+      "commands": [
+        "eqx"
+      ]
+    },
+    "propulsion.tool": {
+      "version": "2.11.0-rc2",
+      "commands": [
+        "propulsion"
       ]
     }
   }

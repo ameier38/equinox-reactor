@@ -1,0 +1,6 @@
+group Build
+    BlackFox.Fake.BuildTask
+    Fake.DotNet.Cli
+    Fake.IO.FileSystem
+    Fake.JavaScript.Npm
+    Fake.Core.Target

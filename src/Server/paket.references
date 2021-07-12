@@ -1,0 +1,16 @@
+Equinox
+Equinox.CosmosStore
+Fable.SignalR
+Fable.SignalR.AspNetCore
+FsCodec
+FsCodec.NewtonsoftJson
+FSharp.UMX
+Microsoft.AspNetCore
+Microsoft.AspNetCore.StaticFiles
+Microsoft.AspNetCore.SignalR.Core
+Propulsion
+Propulsion.CosmosStore
+Serilog
+Serilog.AspNetCore
+Serilog.Sinks.Console
+Serilog.Sinks.Seq
