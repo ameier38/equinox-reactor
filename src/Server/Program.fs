@@ -4,12 +4,14 @@ open Server.Config
 
 [<EntryPoint>]
 let main _argv =
+    printfn "started main"
     let config = Config.Load()
     let logger =
         LoggerConfiguration()
             .Enrich.WithProperty("Application", config.AppName)
             .Enrich.WithProperty("Environment", config.AppEnv)
             .MinimumLevel.Is(if config.AppEnv = AppEnv.Dev then LogEventLevel.Debug else LogEventLevel.Information)
+            .WriteTo.Console()
             .CreateLogger()
     Log.Logger <- logger
     Log.Debug("Debug mode")
@@ -20,9 +22,9 @@ let main _argv =
         let inventoryService = Server.Inventory.Cosmos.create(store.Context)
         async {
             let handle = Server.Reactor.Handler.handle inventoryService
-            let sink, pipeline = Server.Reactor.Handler.build store handle
+            let sink, pipeline = Server.Reactor.build store handle
             Async.Start(pipeline)
-            return! sink.AwaitCompletion()
+            do! sink.AwaitCompletion()
         } |> Async.RunSynchronously
     finally
         Log.CloseAndFlush()

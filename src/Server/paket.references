@@ -1,0 +1,4 @@
+Equinox.CosmosStore
+Propulsion.CosmosStore
+Serilog
+Serilog.Sinks.Console
