@@ -51,14 +51,18 @@ type Service(store:Store.LiveCosmosStore, inventoryService:Inventory.Service) =
         
     member _.StartAsync() =
         async {
-            let stats = Stats(Log.Logger, System.TimeSpan.FromMinutes 1., System.TimeSpan.FromMinutes 5.)
-            let sink = StreamsProjector.Start(Log.Logger, 10, 1, handle, stats, System.TimeSpan.FromMinutes 1.)
-            let mapContent docs =
-                 docs
-                 |> Seq.collect EquinoxNewtonsoftParser.enumStreamEvents
-            use observer = CosmosStoreSource.CreateObserver(Log.Logger, sink.StartIngester, mapContent)
-            let pipeline = CosmosStoreSource.Run(Log.Logger, store.StoreContainer, store.LeaseContainer, "Reactor", observer, startFromTail=false)
-            Async.Start(pipeline)
-            do! sink.AwaitCompletion()
+            try
+                let stats = Stats(Log.Logger, System.TimeSpan.FromMinutes 1., System.TimeSpan.FromMinutes 5.)
+                let sink = StreamsProjector.Start(Log.Logger, 10, 1, handle, stats, System.TimeSpan.FromMinutes 1.)
+                let mapContent docs =
+                     docs
+                     |> Seq.collect EquinoxNewtonsoftParser.enumStreamEvents
+                use observer = CosmosStoreSource.CreateObserver(Log.Logger, sink.StartIngester, mapContent)
+                let pipeline = CosmosStoreSource.Run(Log.Logger, store.StoreContainer, store.LeaseContainer, "Reactor", observer, startFromTail=false)
+                Async.Start(pipeline)
+                do! sink.AwaitCompletion()
+            with ex ->
+                Log.Error(ex, "Error running reactor")
+                raise ex
         }
         

@@ -1,8 +1,8 @@
 open Fable.SignalR
+open Microsoft.Extensions.Hosting
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.Extensions.DependencyInjection
-open Microsoft.Extensions.Hosting
 open Shared.Hub
 open Serilog
 open Serilog.Events
@@ -33,6 +33,7 @@ let configureServices
         (hubSettings:SignalR.Settings<Action,Response>) =
     fun (services:IServiceCollection) ->
         services
+            .AddS
             .AddSignalR(hubSettings)
             |> ignore
         
@@ -50,13 +51,13 @@ let configureApp (hubSettings:SignalR.Settings<Action,Response>) =
 let main _argv =
     let config = Config.Load()
     let logger =
-        LoggerConfiguration()
-            .Enrich.WithProperty("Application", config.AppName)
-            .Enrich.WithProperty("Environment", config.AppEnv)
-            .MinimumLevel.Is(if config.AppEnv = AppEnv.Dev then LogEventLevel.Debug else LogEventLevel.Information)
-            .WriteTo.Console()
-            .WriteTo.Seq(config.SeqConfig.Url)
-            .CreateLogger()
+       LoggerConfiguration()
+           .Enrich.WithProperty("Application", config.AppName)
+           .Enrich.WithProperty("Environment", config.AppEnv)
+           .MinimumLevel.Is(if config.AppEnv = AppEnv.Dev then LogEventLevel.Debug else LogEventLevel.Information)
+           .WriteTo.Console()
+           .WriteTo.Seq(config.SeqConfig.Url)
+           .CreateLogger()
     Log.Logger <- logger
     Log.Debug("Debug mode")
     Log.Debug("{@Config}", config)
@@ -67,7 +68,10 @@ let main _argv =
            let inventoryService = Server.Inventory.Cosmos.createService store.Context
            let reactorService = Server.Reactor.Service(store, inventoryService)
            let hubSettings = Server.Hub.createSettings vehicleService inventoryService
-//           Async.Start(reactorService.StartAsync())
+           let onSuccess () = printfn "Success!"
+           let onError exn = printfn $"Error!: {exn}"
+           let onCancel _ = printfn "Cancelled!"
+           Async.StartWithContinuations(reactorService.StartAsync(), onSuccess, onError, onCancel)
            WebHostBuilder()
                .UseKestrel()
                .UseSerilog()
