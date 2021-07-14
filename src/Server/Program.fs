@@ -10,12 +10,13 @@ open Server.Config
 open System.Threading
 open System.Threading.Tasks
 
-type Pinger (hub:FableHubCaller<Action,Response>) =
+type Pinger (inventoryService:Server.Inventory.Service, hub:FableHubCaller<Action,Response>) =
     let cts = new CancellationTokenSource()
     let rec loop () =
         async {
             Log.Information("Sending ping")
-            do! hub.Clients.All.Send(Response.Ping "hello") |> Async.AwaitTask
+            let! inventory = inventoryService.Read()
+            do! hub.Clients.All.Send(Response.Ping $"count: {inventory.count}") |> Async.AwaitTask
             do! Async.Sleep 5000
             return! loop()
         }
@@ -29,22 +30,35 @@ type Pinger (hub:FableHubCaller<Action,Response>) =
             Async.StartAsTask(work, cancellationToken=ct) :> Task
     
 
-let configureServices
-        (hubSettings:SignalR.Settings<Action,Response>) =
-    fun (services:IServiceCollection) ->
-        services
-            .AddS
-            .AddSignalR(hubSettings)
-            |> ignore
+let configureServices (config:Config) (services:IServiceCollection) =
+    services
+        .AddSignalR(Server.Hub.settings)
+        .AddSingleton<Server.Store.LiveCosmosStore>(fun s ->
+            Server.Store.LiveCosmosStore(config.CosmosDBConfig))
+        .AddSingleton<Server.Vehicle.Service>(fun s ->
+            let store = s.GetRequiredService<Server.Store.LiveCosmosStore>()
+            Server.Vehicle.Cosmos.createService store.Context)
+        .AddSingleton<Server.Inventory.Service>(fun s ->
+            let store = s.GetRequiredService<Server.Store.LiveCosmosStore>()
+            Server.Inventory.Cosmos.createService store.Context)
+//        .AddHostedService<Pinger>(fun s ->
+//            let inventoryService = s.GetRequiredService<Server.Inventory.Service>()
+//            let hub = s.GetRequiredService<FableHubCaller<Action,Response>>()
+//            Pinger(inventoryService, hub))
+        .AddHostedService<Server.Reactor.Service>(fun s ->
+            let store = s.GetRequiredService<Server.Store.LiveCosmosStore>()
+            let inventoryService = s.GetRequiredService<Server.Inventory.Service>()
+            let hub = s.GetRequiredService<FableHubCaller<Action,Response>>()
+            Server.Reactor.Service(store, inventoryService, hub))
+        |> ignore
         
-let configureApp (hubSettings:SignalR.Settings<Action,Response>) =
-    fun (appBuilder:IApplicationBuilder) ->
+let configureApp (appBuilder:IApplicationBuilder) =
         appBuilder
             // NB: rewrite route / -> /index.html 
             .UseDefaultFiles()
             // NB: service static files from wwwroot dir
             .UseStaticFiles()
-            .UseSignalR(hubSettings)
+            .UseSignalR(Server.Hub.settings)
             |> ignore
 
 [<EntryPoint>]
@@ -63,20 +77,11 @@ let main _argv =
     Log.Debug("{@Config}", config)
     try
        try
-           let store = Server.Store.LiveCosmosStore(config.CosmosDBConfig)
-           let vehicleService = Server.Vehicle.Cosmos.createService store.Context
-           let inventoryService = Server.Inventory.Cosmos.createService store.Context
-           let reactorService = Server.Reactor.Service(store, inventoryService)
-           let hubSettings = Server.Hub.createSettings vehicleService inventoryService
-           let onSuccess () = printfn "Success!"
-           let onError exn = printfn $"Error!: {exn}"
-           let onCancel _ = printfn "Cancelled!"
-           Async.StartWithContinuations(reactorService.StartAsync(), onSuccess, onError, onCancel)
            WebHostBuilder()
-               .UseKestrel()
                .UseSerilog()
-               .ConfigureServices(configureServices hubSettings)
-               .Configure(configureApp hubSettings)
+               .UseKestrel()
+               .ConfigureServices(configureServices config)
+               .Configure(configureApp)
                .UseUrls(config.ServerConfig.Url)
                .Build()
                .Run()

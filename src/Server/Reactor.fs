@@ -1,8 +1,11 @@
 ﻿module Server.Reactor
 
+open Fable.SignalR
+open Microsoft.Extensions.Hosting
 open Propulsion.CosmosStore
 open Propulsion.Streams
 open Serilog
+open Shared.Hub
 open Shared.Types
 open System.Threading
 open System.Threading.Tasks
@@ -28,7 +31,9 @@ type Stats(log, statsInterval, stateInterval) =
             log.Information(" Completed {completed} Skipped {skipped}", completed, skipped)
             completed <- 0; skipped <- 0
 
-type Service(store:Store.LiveCosmosStore, inventoryService:Inventory.Service) =
+type Service(store:Store.LiveCosmosStore, inventoryService:Inventory.Service, hub:FableHubCaller<Action,Response>) =
+    let cts = new CancellationTokenSource()
+    
     let handle (stream, span: StreamSpan<_>) =
         async {
             match stream with
@@ -42,27 +47,39 @@ type Service(store:Store.LiveCosmosStore, inventoryService:Inventory.Service) =
                         | Vehicle.VehicleAdded payload ->
                             let inventoriedVehicle = { vehicleId = vehicleId; vehicle = payload.vehicle }
                             added |> Array.append [| inventoriedVehicle |], removed
-                        | Vehicle.VehicleRemoved _ -> added, removed |> Array.filter (fun vid -> vid <> vehicleId))
+                        | Vehicle.VehicleRemoved ->
+                            added, removed |> Array.append [| vehicleId |])
                 do! inventoryService.Update(span.Version, added, removed)
+                return SpanResult.AllProcessed, Outcome.Completed
+            | Inventory.Event.MatchesCategory _ ->
+                let event = Inventory.Event.decode span |> Array.last
+                match event with
+                | Inventory.Event.Updated payload ->
+                    let inventory = { vehicles = payload.vehicles; count = payload.count }
+                    do! hub.Clients.All.Send(Response.InventoryUpdated(inventory)) |> Async.AwaitTask
                 return SpanResult.AllProcessed, Outcome.Completed
             | _ ->
                 return SpanResult.AllProcessed, Outcome.Skipped
         }
         
-    member _.StartAsync() =
+    let run =
         async {
-            try
-                let stats = Stats(Log.Logger, System.TimeSpan.FromMinutes 1., System.TimeSpan.FromMinutes 5.)
-                let sink = StreamsProjector.Start(Log.Logger, 10, 1, handle, stats, System.TimeSpan.FromMinutes 1.)
-                let mapContent docs =
-                     docs
-                     |> Seq.collect EquinoxNewtonsoftParser.enumStreamEvents
-                use observer = CosmosStoreSource.CreateObserver(Log.Logger, sink.StartIngester, mapContent)
-                let pipeline = CosmosStoreSource.Run(Log.Logger, store.StoreContainer, store.LeaseContainer, "Reactor", observer, startFromTail=false)
-                Async.Start(pipeline)
-                do! sink.AwaitCompletion()
-            with ex ->
-                Log.Error(ex, "Error running reactor")
-                raise ex
+            let stats = Stats(Log.Logger, System.TimeSpan.FromMinutes 1., System.TimeSpan.FromMinutes 5.)
+            let sink = StreamsProjector.Start(Log.Logger, 10, 1, handle, stats, System.TimeSpan.FromMinutes 1.)
+            let mapContent = Seq.collect EquinoxNewtonsoftParser.enumStreamEvents
+            use observer = CosmosStoreSource.CreateObserver(Log.Logger, sink.StartIngester, mapContent)
+            let pipeline = CosmosStoreSource.Run(Log.Logger, store.StoreContainer, store.LeaseContainer, "Reactor", observer, startFromTail=false)
+            Async.Start(pipeline, cancellationToken=cts.Token)
+            do! sink.AwaitCompletion()
         }
+        
+    interface IHostedService with
+        
+        member _.StartAsync(ct:CancellationToken) =
+            let work = async { do Async.Start(run, cts.Token) }
+            Async.StartAsTask(work, cancellationToken=ct) :> Task
+        
+        member _.StopAsync(ct:CancellationToken) =
+            let work = async { do cts.Cancel() }
+            Async.StartAsTask(work, cancellationToken=ct) :> Task
         

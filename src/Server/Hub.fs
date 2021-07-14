@@ -1,5 +1,6 @@
 ﻿module Server.Hub
 
+open System
 open Fable.SignalR
 open Microsoft.Extensions.DependencyInjection
 open Shared.Hub
@@ -7,9 +8,11 @@ open Serilog
 open System.Threading.Tasks
 
 module Settings =
-    let update (vehicleService:Vehicle.Service) (inventoryService:Inventory.Service) =
+    let update (services:IServiceProvider) =
         fun (action:Action) ->
             async {
+                let vehicleService = services.GetRequiredService<Vehicle.Service>()
+                let inventoryService = services.GetRequiredService<Inventory.Service>()
                 match action with
                 | Action.GetInventory ->
                     let! inventory = inventoryService.Read()
@@ -22,24 +25,20 @@ module Settings =
                     return Response.CommandSucceeded
             }
             
-    let invoke (vehicleService:Vehicle.Service) (inventoryService:Inventory.Service) =
-        fun (action:Action) (_hubCtx:FableHub) ->
-            let update' = update vehicleService inventoryService
+    let invoke (action:Action) (hubCtx:FableHub) =
+            let update' = update hubCtx.Services
             Async.StartAsTask(update' action)
         
-    let send (vehicleService:Vehicle.Service) (inventoryService:Inventory.Service) =
-        fun (action:Action) (hubCtx:FableHub<Action,Response>) ->
+    let send (action:Action) (hubCtx:FableHub<Action,Response>) =
             async {
-                let update' = update vehicleService inventoryService
+                let update' = update hubCtx.Services
                 let! response = update' action
                 return hubCtx.Clients.Caller.Send(response)
             } |> Async.StartAsTask :> Task
             
-let createSettings
-        (vehicleService:Vehicle.Service)
-        (inventoryService:Inventory.Service)
+let settings
     : SignalR.Settings<Action,Response> =
     { EndpointPattern = Endpoints.Root
-      Send = Settings.send vehicleService inventoryService
-      Invoke = Settings.invoke vehicleService inventoryService
+      Send = Settings.send
+      Invoke = Settings.invoke
       Config = None }

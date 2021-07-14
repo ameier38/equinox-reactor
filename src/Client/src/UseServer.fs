@@ -27,8 +27,7 @@ let init() =
     Cmd.SignalR.connect RegisterHub (fun hub ->
         hub.withUrl(Endpoints.Root)
             .withAutomaticReconnect()
-            
-            .configureLogging(LogLevel.Trace)
+            .configureLogging(LogLevel.Information)
             .onMessage(Response))
     
 let update (msg:Msg) (state:State) =
@@ -44,10 +43,9 @@ let update (msg:Msg) (state:State) =
     | Response (Response.InventoryUpdated inventory) ->
         { state with Inventory = Resolved inventory },
         Cmd.none
-        
     | Response Response.CommandSucceeded ->
         { state with Command = Resolved () },
-        Cmd.SignalR.send state.Hub Action.GetInventory
+        Cmd.none
     | GetInventory ->
         { state with Inventory = InProgress },
         Cmd.SignalR.send state.Hub Action.GetInventory

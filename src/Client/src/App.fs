@@ -94,8 +94,10 @@ let VehicleList() =
                 prop.children [
                     for { vehicleId = vid; vehicle = v } in inventory.vehicles do
                         Html.li [
+                            prop.className "my-2"
                             prop.children [
                                 Html.button [
+                                    prop.className "rounded-md shadow p-2 bg-gray-200 mr-2"
                                     prop.text "Remove"
                                     prop.onClick(fun e ->
                                         e.preventDefault()

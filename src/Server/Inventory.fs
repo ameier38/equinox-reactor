@@ -11,11 +11,18 @@ type Command =
     | Update of version:int64 * added:InventoriedVehicle [] * removed:VehicleId []
 
 type Event =
-    | Updated of {| version:int64; added:InventoriedVehicle []; removed:VehicleId [] |}
+    | Updated of {| vehicles:InventoriedVehicle []; count:int |}
     interface TypeShape.UnionContract.IUnionContract
 
 module Event =
     let codec = Codec.Create<Event>()
+    let decode (span:Propulsion.Streams.StreamSpan<_>) =
+        span.events
+        |> Array.choose codec.TryDecode
+    let (|MatchesCategory|_|) (stream:FsCodec.StreamName) =
+        match stream with
+        | FsCodec.StreamName.CategoryAndId (Category, _) -> Some ()
+        | _ -> None
 
 type State = { version: int64; vehicles: InventoriedVehicle[]; count: int }
 
@@ -27,11 +34,8 @@ module Fold =
         match event with
         | Updated payload ->
             { state with
-                vehicles =
-                    state.vehicles
-                    |> Array.filter (fun v -> not (payload.removed |> Array.contains v.vehicleId))
-                    |> Array.append payload.added
-                count = state.count - payload.removed.Length + payload.added.Length }
+                vehicles = payload.vehicles
+                count = payload.count }
             
     let fold: State -> seq<Event> -> State = Seq.fold evolve
 
@@ -39,7 +43,12 @@ let interpret (command:Command) (state:State) =
     match command with
     | Update (version, added, removed) ->
         if version > state.version then
-            [Updated {| version = version; added = added; removed = removed |}]
+            let vehicles =
+                state.vehicles
+                |> Array.filter (fun v -> not (removed |> Array.contains v.vehicleId))
+                |> Array.append added
+            let count = state.count - removed.Length + added.Length
+            [Updated {| vehicles = vehicles; count = count |}]
         else
             []
     
