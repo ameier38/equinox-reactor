@@ -18,10 +18,10 @@ module Settings =
                     let! inventory = inventoryService.Read()
                     return Response.InventoryUpdated inventory
                 | Action.AddVehicle (vehicleId, vehicle) ->
-                    do! vehicleService.AddVehicle(vehicleId, vehicle)
+                    do! vehicleService.Add(vehicleId, vehicle)
                     return Response.CommandSucceeded
                 | Action.RemoveVehicle vehicleId ->
-                    do! vehicleService.RemoveVehicle(vehicleId)
+                    do! vehicleService.Remove(vehicleId)
                     return Response.CommandSucceeded
             }
             

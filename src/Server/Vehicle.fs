@@ -8,12 +8,12 @@ let [<Literal>] private Category = "Vehicle"
 let streamName id = FsCodec.StreamName.create Category (VehicleId.toString id)
 
 type Command =
-    | AddVehicle of Vehicle
-    | RemoveVehicle
+    | Add of Vehicle
+    | Remove
 
 type Event =
-    | VehicleAdded of {| vehicle: Vehicle |}
-    | VehicleRemoved
+    | Added of {| vehicle: Vehicle |}
+    | Removed
     interface TypeShape.UnionContract.IUnionContract
     
 module Event =
@@ -34,25 +34,23 @@ module Fold =
     
     let initial = DoesNotExist
 
-    let evolve (_:State) (event:Event): State =
+    let evolve (_state:State) (event:Event): State =
         match event with
-        | VehicleAdded _ -> Exists
-        | VehicleRemoved _  -> DoesNotExist
+        | Added _ -> Exists
+        | Removed -> DoesNotExist
 
     let fold: State -> seq<Event> -> State = Seq.fold evolve
     
 let interpret (command:Command) (state:State) =
     match state, command with
-    | DoesNotExist, AddVehicle vehicle ->
-        let vehicleAdded = VehicleAdded {| vehicle = vehicle |}
-        [vehicleAdded]
-    | Exists, AddVehicle _ ->
-        failwith "Vehicle already added"
-    | DoesNotExist, RemoveVehicle ->
-        failwith "Vehicle not found"
-    | Exists, RemoveVehicle ->
-        let vehicleRemoved = VehicleRemoved
-        [vehicleRemoved]
+    | DoesNotExist, Add vehicle ->
+        [Added {| vehicle = vehicle |}]
+    | Exists, Remove ->
+        [Removed]
+    | Exists, Add _ ->
+        failwith "Vehicle already exists"
+    | DoesNotExist, Remove ->
+        failwith "Vehicle does not exist"
             
 type Service (resolve:VehicleId -> Equinox.Decider<Event,State>) =
     
@@ -60,11 +58,11 @@ type Service (resolve:VehicleId -> Equinox.Decider<Event,State>) =
         let decider = resolve vehicleId
         decider.Transact(interpret command)
     
-    member _.AddVehicle(vehicleId, vehicle) =
-        transact vehicleId (AddVehicle vehicle)
+    member _.Add(vehicleId, vehicle) =
+        transact vehicleId (Add vehicle)
         
-    member _.RemoveVehicle(vehicleId) =
-        transact vehicleId RemoveVehicle
+    member _.Remove(vehicleId) =
+        transact vehicleId Remove
         
 module Cosmos =
     let cacheStrategy = CachingStrategy.NoCaching

@@ -39,23 +39,25 @@ type Service(store:Store.LiveCosmosStore, inventoryService:Inventory.Service, hu
             match stream with
             | Vehicle.Event.MatchesCategory vehicleId ->
                 let events = Vehicle.Event.decode span
-                let initial: InventoriedVehicle[] * VehicleId[] = Array.empty, Array.empty
+                let initial = Array.empty, Array.empty
                 let added, removed =
                     (initial, events)
                     ||> Array.fold (fun (added, removed) e ->
                         match e with
-                        | Vehicle.VehicleAdded payload ->
+                        | Vehicle.Event.Added payload ->
                             let inventoriedVehicle = { vehicleId = vehicleId; vehicle = payload.vehicle }
                             added |> Array.append [| inventoriedVehicle |], removed
-                        | Vehicle.VehicleRemoved ->
+                        | Vehicle.Event.Removed ->
                             added, removed |> Array.append [| vehicleId |])
+                Log.Information("Updating inventory")
                 do! inventoryService.Update(span.Version, added, removed)
                 return SpanResult.AllProcessed, Outcome.Completed
             | Inventory.Event.MatchesCategory _ ->
                 let event = Inventory.Event.decode span |> Array.last
                 match event with
                 | Inventory.Event.Updated payload ->
-                    let inventory = { vehicles = payload.vehicles; count = payload.count }
+                    let inventory = { vehicles = payload.vehicles; count = payload.vehicles.Length }
+                    Log.Information("Inventory updated; notifying clients")
                     do! hub.Clients.All.Send(Response.InventoryUpdated(inventory)) |> Async.AwaitTask
                 return SpanResult.AllProcessed, Outcome.Completed
             | _ ->

@@ -36,10 +36,6 @@ let update (msg:Msg) (state:State) =
     | RegisterHub hub ->
         { state with Hub = Some hub },
         Cmd.SignalR.send (Some hub) Action.GetInventory
-    | Response (Response.Ping msg) ->
-        Log.info $"ping: {msg}"
-        state,
-        Cmd.none
     | Response (Response.InventoryUpdated inventory) ->
         { state with Inventory = Resolved inventory },
         Cmd.none

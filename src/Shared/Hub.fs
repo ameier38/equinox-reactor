@@ -10,7 +10,6 @@ type Action =
 
 [<RequireQualifiedAccess>]
 type Response =
-    | Ping of string
     | CommandSucceeded
     | InventoryUpdated of Inventory
     

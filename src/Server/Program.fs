@@ -1,5 +1,4 @@
 open Fable.SignalR
-open Microsoft.Extensions.Hosting
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.Extensions.DependencyInjection
@@ -7,28 +6,6 @@ open Shared.Hub
 open Serilog
 open Serilog.Events
 open Server.Config
-open System.Threading
-open System.Threading.Tasks
-
-type Pinger (inventoryService:Server.Inventory.Service, hub:FableHubCaller<Action,Response>) =
-    let cts = new CancellationTokenSource()
-    let rec loop () =
-        async {
-            Log.Information("Sending ping")
-            let! inventory = inventoryService.Read()
-            do! hub.Clients.All.Send(Response.Ping $"count: {inventory.count}") |> Async.AwaitTask
-            do! Async.Sleep 5000
-            return! loop()
-        }
-        
-    interface IHostedService with
-        member _.StartAsync(ct) =
-            let work = async { do Async.Start(loop(), cts.Token) }
-            Async.StartAsTask(work, cancellationToken=ct) :> Task
-        member _.StopAsync(ct) =
-            let work = async { do cts.Cancel() }
-            Async.StartAsTask(work, cancellationToken=ct) :> Task
-    
 
 let configureServices (config:Config) (services:IServiceCollection) =
     services
@@ -41,10 +18,6 @@ let configureServices (config:Config) (services:IServiceCollection) =
         .AddSingleton<Server.Inventory.Service>(fun s ->
             let store = s.GetRequiredService<Server.Store.LiveCosmosStore>()
             Server.Inventory.Cosmos.createService store.Context)
-//        .AddHostedService<Pinger>(fun s ->
-//            let inventoryService = s.GetRequiredService<Server.Inventory.Service>()
-//            let hub = s.GetRequiredService<FableHubCaller<Action,Response>>()
-//            Pinger(inventoryService, hub))
         .AddHostedService<Server.Reactor.Service>(fun s ->
             let store = s.GetRequiredService<Server.Store.LiveCosmosStore>()
             let inventoryService = s.GetRequiredService<Server.Inventory.Service>()

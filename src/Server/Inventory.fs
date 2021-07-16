@@ -2,16 +2,17 @@ module Server.Inventory
 
 open Equinox.CosmosStore
 open FsCodec.NewtonsoftJson
+open Serilog
 open Shared.Types
 
 let [<Literal>] private Category = "Inventory"
 let streamName () = FsCodec.StreamName.create Category "0"
 
 type Command =
-    | Update of version:int64 * added:InventoriedVehicle [] * removed:VehicleId []
+    | Ingest of version:int64 * added:InventoriedVehicle[] * removed:VehicleId[]
 
 type Event =
-    | Updated of {| vehicles:InventoriedVehicle []; count:int |}
+    | Updated of {| version: int64; vehicles: InventoriedVehicle[] |}
     interface TypeShape.UnionContract.IUnionContract
 
 module Event =
@@ -24,54 +25,43 @@ module Event =
         | FsCodec.StreamName.CategoryAndId (Category, _) -> Some ()
         | _ -> None
 
-type State = { version: int64; vehicles: InventoriedVehicle[]; count: int }
+type State = { version: int64; vehicles: InventoriedVehicle[] }
 
 module Fold =
 
-    let initial = { version = 0L; vehicles = Array.empty; count = 0 }
+    let initial = { version = 0L; vehicles = Array.empty }
 
     let evolve (state:State) (event:Event): State =
         match event with
         | Updated payload ->
             { state with
-                vehicles = payload.vehicles
-                count = payload.count }
+                version = payload.version
+                vehicles = payload.vehicles }
             
     let fold: State -> seq<Event> -> State = Seq.fold evolve
 
 let interpret (command:Command) (state:State) =
     match command with
-    | Update (version, added, removed) ->
-        if version > state.version then
-            let vehicles =
-                state.vehicles
-                |> Array.filter (fun v -> not (removed |> Array.contains v.vehicleId))
-                |> Array.append added
-            let count = state.count - removed.Length + added.Length
-            [Updated {| vehicles = vehicles; count = count |}]
-        else
-            []
+    | Ingest (version, added, removed) ->
+        Log.Information("Added: {Added}; Removed: {Removed}", added, removed)
+        let vehicles =
+            state.vehicles
+            |> Array.append added
+            |> Array.filter (fun v -> not (removed |> Array.contains v.vehicleId))
+        [Updated {| version = version; vehicles = vehicles |}]
     
 type Service (resolve:unit -> Equinox.Decider<Event,State>) =
     
-    member _.Update(version:int64, added:InventoriedVehicle[], removed:VehicleId[]) =
+    let transact command =
         let decider = resolve ()
-        let command = Update (version, added, removed)
         decider.Transact(interpret command)
+    
+    member _.Update(version:int64, added:InventoriedVehicle[], removed:VehicleId[]) =
+        transact (Ingest (version, added, removed))
         
     member _.Read(): Async<Inventory> =
-//        async {
-//            let vehicle1: InventoriedVehicle =
-//                { vehicleId = VehicleId.create()
-//                  vehicle = { make = "Tesla"; model = "S"; year = 2020 } }
-//            let vehicle2: InventoriedVehicle =
-//                { vehicleId = VehicleId.create()
-//                  vehicle = { make = "Toyota"; model = "Tacoma"; year = 2017 } }
-//            let vehicles = [| vehicle1; vehicle2 |]
-//            return { vehicles = vehicles ; count = vehicles.Length }
-//        }
         let decider = resolve ()
-        decider.Query(fun s -> { vehicles = s.vehicles; count = s.count })
+        decider.Query(fun s -> { vehicles = s.vehicles; count = s.vehicles.Length })
         
 module Cosmos =
     let cacheStrategy = CachingStrategy.NoCaching
