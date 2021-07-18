@@ -4,62 +4,55 @@ open canopy.classic
 open canopy.runner.classic
 open canopy.types
 open OpenQA.Selenium.Chrome
+open Config
 
-let canopyConfig = Config.CanopyConfig.Load()
-
-canopy.configuration.chromeDir <- canopyConfig.DriverDir
-canopy.configuration.webdriverPort <- Some canopyConfig.DriverPort
-canopy.configuration.failScreenshotPath <- canopyConfig.ScreenshotDir
-canopy.configuration.failureScreenshotsEnabled <- true
-
-type StartMode =
-    | Headfull
+[<RequireQualifiedAccess>]
+type BrowserMode =
+    | Local
     | Headless
 
-let startBrowser (startMode:StartMode) =
+let configureCanopy (config:CanopyConfig) =
+    canopy.configuration.chromeDir <- config.ChromeDriverDir
+    canopy.configuration.failScreenshotPath <- config.ScreenshotsDir
+    canopy.configuration.failureScreenshotsEnabled <- true
+
+let startBrowser (browserMode:BrowserMode) =
     let browserStartMode =
         let chromeOptions = ChromeOptions()
         chromeOptions.AddArgument("--no-sandbox")
-        match startMode with
-        | Headfull -> ChromeWithOptions chromeOptions
-        | Headless ->
-            let chromeOptions = ChromeOptions()
-            chromeOptions.AddArgument("--no-sandbox")
+        match browserMode with
+        | BrowserMode.Local -> ()
+        | BrowserMode.Headless ->
             chromeOptions.AddArgument("--headless")
-            Remote(canopyConfig.DriverUrl, chromeOptions.ToCapabilities())
+        ChromeWithOptions chromeOptions
     start browserStartMode
     pin Left 
     resize (1000, 600)
 
-
-let startApp () =
-    url canopyConfig.ClientUrl
+let startApp (config:CanopyConfig) =
+    let clientUrl = config.ClientUrl
+    describe $"starting app {clientUrl}"
+    url clientUrl
     waitForElement "#app"
 
-let addVehicle year make model =
-    describe (sprintf "adding vehicle %s %s %s" year make model)
-    "#make" << make
-    "#model" << model
-    "#year" << year
-    click "Submit"
-
-let removeVehicle () =
-    click (first "Remove")
-
-"test add vehicle" &&& fun _ ->
-    startApp()
-    sleep 10
-    let vehicleCount = read "#count" |> int
-    describe (sprintf "vehicle count should be %i" vehicleCount)
-    count ".vehicle" vehicleCount
-    addVehicle "2020" "Toyota" "Tacoma"
-    describe (sprintf "vehicle count should be %i" (vehicleCount + 1))
-    "#count" == (vehicleCount + 1 |> string)
-    count ".vehicle" (vehicleCount + 1)
-    sleep 2
-    addVehicle "2021" "Tesla" "Cybertruck"
-    describe (sprintf "vehicle count should be %i" (vehicleCount + 2))
-    "#count" == (vehicleCount + 2 |> string)
-    count ".vehicle" (vehicleCount + 2)
-    removeVehicle()
-    sleep 10
+let registerTestApp (config:CanopyConfig) =
+    "test app" &&& fun () ->
+        startApp config
+        describe "should be on home page"
+    
+let run (browserMode:BrowserMode) =
+    let mutable failed = false
+    try
+        let config = CanopyConfig.Load()
+        printfn $"config: {config}"
+        configureCanopy config
+        registerTestApp config
+        startBrowser browserMode
+        run()
+        onFail (fun _ -> failed <- true)
+        quit()
+        if failed then 1 else 0
+    with ex ->
+        printfn $"Error! {ex}"
+        quit()
+        1

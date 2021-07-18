@@ -30,7 +30,6 @@ let input (id:string) (label:string) (value:string) (onChange: string -> unit) =
     
 let section (children:seq<ReactElement>) =
     Html.div [
-        prop.className "p-2 m-2 rounded-md border-2 border-gray-200"
         prop.children children
     ]
  
@@ -40,23 +39,34 @@ let VehicleForm () =
     let model, setModel = React.useState("")
     let year, setYear = React.useState("")
     let server = React.useServer()
-    section [
-        Html.h2 "Add Vehicle:"
-        Html.form [
-            prop.onSubmit(fun e ->
-                e.preventDefault()
-                let vehicleId = VehicleId.create()
-                let vehicle = { make = make; model = model; year = int year }
-                server.addVehicle(vehicleId, vehicle))
-            prop.children [
-                input "make" "Make: " make setMake
-                input "model" "Model: " model setModel
-                input "year" "Year: " year setYear
-                Html.button [
-                    prop.className "rounded-md shadow p-2 bg-gray-200"
-                    prop.action "submit"
-                    prop.text "Submit"
-                    
+    let disabled =
+        match server.AddVehicle with
+        | InProgress -> "disabled"
+        | _ -> ""
+    let clearForm () =
+        match server.AddVehicle with
+        | Resolved -> setMake ""; setModel ""; setYear ""
+        | _ -> ()
+    React.useEffect(clearForm, [| box server.AddVehicle |])
+    Html.div [
+        prop.className "w-1/2 p-2 m-2 rounded-md border-2 border-gray-200"
+        prop.children [
+            Html.h2 "Add Vehicle:"
+            Html.form [
+                prop.onSubmit(fun e ->
+                    e.preventDefault()
+                    let vehicleId = VehicleId.create()
+                    let vehicle = { make = make; model = model; year = int year }
+                    server.addVehicle(vehicleId, vehicle))
+                prop.children [
+                    input "make" "Make: " make setMake
+                    input "model" "Model: " model setModel
+                    input "year" "Year: " year setYear
+                    Html.button [
+                        prop.className $"rounded-md shadow p-2 bg-gray-200 {disabled}"
+                        prop.action "submit"
+                        prop.text "Submit"
+                    ]
                 ]
             ]
         ]
@@ -65,34 +75,50 @@ let VehicleForm () =
 [<ReactComponent>]
 let VehicleCount () =
     let server = React.useServer()
-    section [
-        Html.h2 [
-            Html.text "Vehicle Count:"
-        ]
-        Html.h1 [
-            match server.Inventory with
-            | HasNotStarted | InProgress ->
-                prop.text "Loading..."
-            | Resolved inventory ->
-                prop.text inventory.count
-            | Failed ex ->
-                Log.error ex
-                prop.text $"Error: {ex}"
+    Html.div [
+        prop.className "w-1/2 p-2 m-2 rounded-md border-2 border-gray-200"
+        prop.children [
+            Html.h2 [
+                prop.children [
+                    Html.text "Vehicle Count: "
+                    match server.GetInventory with
+                    | HasNotStarted | InProgress ->
+                        Html.text "Loading..."
+                    | Resolved ->
+                        Html.text ""
+                    | Failed ex ->
+                        Log.error ex
+                        Html.text $"Error: {ex}"
+                ]
+            ]
+            Html.h1 [
+                prop.text server.Inventory.count
+            ]
         ]
     ]
     
 [<ReactComponent>]
 let VehicleList() =
     let server = React.useServer()
-    section [
-        Html.h2 "Vehicles:"
-        match server.Inventory with
-        | HasNotStarted | InProgress ->
-            Html.h2 "Loading..."
-        | Resolved inventory ->
+    Html.div [
+        prop.className "w-full p-2 m-2 rounded-md border-2 border-gray-200"
+        prop.children[
+            Html.h2 [
+                prop.children [
+                    Html.text "Vehicles: "
+                    match server.GetInventory with
+                    | HasNotStarted | InProgress ->
+                        Html.text "Loading..."
+                    | Resolved ->
+                        Html.text ""
+                    | Failed ex ->
+                        Log.error ex
+                        Html.text $"Error: {ex}"
+                ]
+            ]
             Html.unorderedList [
                 prop.children [
-                    for { vehicleId = vid; vehicle = v } in inventory.vehicles do
+                    for { vehicleId = vid; vehicle = v } in server.Inventory.vehicles do
                         Html.li [
                             prop.className "my-2"
                             prop.children [
@@ -108,18 +134,27 @@ let VehicleList() =
                         ]
                 ]
             ]
-        | Failed ex ->
-            Html.h2 $"Error: {ex}"
+        ]
     ]
 
 [<ReactComponent>]
 let Page () =
     Html.div [
-        prop.className "container mx-auto flex justify-center"
+        prop.className "container mx-auto"
         prop.children [
-            VehicleForm()
-            VehicleCount()
-            VehicleList()
+            Html.div [
+                prop.className "w-full flex"
+                prop.children [
+                    VehicleForm()
+                    VehicleCount()
+                ]
+            ]
+            Html.div [
+                prop.className "w-full flex"
+                prop.children [
+                    VehicleList()
+                ]
+            ]
         ]
     ]
 

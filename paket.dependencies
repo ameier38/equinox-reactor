@@ -3,6 +3,7 @@ storage none
 source https://api.nuget.org/v3/index.json
 framework: net5.0, netstandard2.0, netstandard2.1
 
+nuget Argu
 nuget canopy
 nuget Equinox.CosmosStore
 nuget Expecto

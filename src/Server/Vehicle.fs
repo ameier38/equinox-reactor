@@ -20,7 +20,10 @@ module Event =
     let codec = Codec.Create<Event>()
     let decode (span:Propulsion.Streams.StreamSpan<_>) =
         span.events
-        |> Array.choose codec.TryDecode
+        |> Array.choose (fun e ->
+            match codec.TryDecode e with
+            | Some decoded -> Some (e.Index, decoded)
+            | None -> None)
     let (|MatchesCategory|_|) (stream:FsCodec.StreamName) =
         match stream with
         | FsCodec.StreamName.CategoryAndId (Category, vehicleId) -> Some (VehicleId.parse vehicleId)

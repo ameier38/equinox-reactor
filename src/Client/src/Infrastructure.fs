@@ -3,10 +3,10 @@ module Client.Infrastructure
 
 open Fable.Core
 
-type Deferred<'T> =
+type Deferred =
     | HasNotStarted
     | InProgress
-    | Resolved of 'T
+    | Resolved
     | Failed of string
 
 [<RequireQualifiedAccess>]

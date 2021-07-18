@@ -15,14 +15,23 @@ module Settings =
                 let inventoryService = services.GetRequiredService<Inventory.Service>()
                 match action with
                 | Action.GetInventory ->
-                    let! inventory = inventoryService.Read()
-                    return Response.InventoryUpdated inventory
+                    try
+                        let! inventory = inventoryService.Read()
+                        return Response.GetInventoryCompleted inventory
+                    with ex ->
+                        return Response.GetInventoryFailed ex.Message
                 | Action.AddVehicle (vehicleId, vehicle) ->
-                    do! vehicleService.Add(vehicleId, vehicle)
-                    return Response.CommandSucceeded
+                    try
+                        do! vehicleService.Add(vehicleId, vehicle)
+                        return Response.AddVehicleCompleted
+                    with ex ->
+                        return Response.AddVehicleFailed ex.Message
                 | Action.RemoveVehicle vehicleId ->
-                    do! vehicleService.Remove(vehicleId)
-                    return Response.CommandSucceeded
+                    try
+                        do! vehicleService.Remove(vehicleId)
+                        return Response.RemoveVehicleCompleted
+                    with ex ->
+                        return Response.RemoveVehicleFailed ex.Message
             }
             
     let invoke (action:Action) (hubCtx:FableHub) =

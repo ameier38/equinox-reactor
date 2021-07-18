@@ -10,8 +10,12 @@ type Action =
 
 [<RequireQualifiedAccess>]
 type Response =
-    | CommandSucceeded
-    | InventoryUpdated of Inventory
+    | GetInventoryCompleted of Inventory
+    | GetInventoryFailed of string
+    | AddVehicleCompleted
+    | AddVehicleFailed of string
+    | RemoveVehicleCompleted
+    | RemoveVehicleFailed of string
     
 module Endpoints =
     let [<Literal>] Root = "/hub"

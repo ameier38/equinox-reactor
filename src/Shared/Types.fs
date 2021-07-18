@@ -16,6 +16,6 @@ module VehicleId =
     
 type Vehicle = { make: string; model: string; year: int }
     
-type InventoriedVehicle = { vehicleId: VehicleId; vehicle: Vehicle }
+type InventoriedVehicle = { version: int64; vehicleId: VehicleId; vehicle: Vehicle }
 
 type Inventory = { vehicles: InventoriedVehicle[]; count: int }

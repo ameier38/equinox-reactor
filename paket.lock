@@ -2,6 +2,9 @@ STORAGE: NONE
 RESTRICTION: || (== net50) (== netstandard2.0) (== netstandard2.1)
 NUGET
   remote: https://api.nuget.org/v3/index.json
+    Argu (6.1.1)
+      FSharp.Core (>= 4.3.2)
+      System.Configuration.ConfigurationManager (>= 4.4)
     Azure.Core (1.16)
       Microsoft.Bcl.AsyncInterfaces (>= 1.0)
       System.Buffers (>= 4.5.1)

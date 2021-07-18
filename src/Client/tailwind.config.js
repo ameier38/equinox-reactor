@@ -3,6 +3,10 @@ module.exports = {
   purge: ['./static/**/*.html', './compiled/**/*.js'],
   plugins: [
     require('@tailwindcss/forms')
-  ]
-  // specify other options here
+  ],
+  variants: {
+    extend: {
+      opacity: ['disabled'],
+    }
+  }
 };

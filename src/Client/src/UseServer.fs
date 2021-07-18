@@ -9,8 +9,10 @@ open Shared.Types
 open Shared.Hub
 
 type State =
-    { Inventory: Deferred<Inventory>
-      Command: Deferred<unit>
+    { Inventory: Inventory
+      GetInventory: Deferred
+      AddVehicle: Deferred
+      RemoveVehicle: Deferred
       Hub: Elmish.Hub<Action,Response> option }
     
 type Msg =
@@ -21,8 +23,10 @@ type Msg =
     | RemoveVehicle of VehicleId
     
 let init() =
-    { Inventory = HasNotStarted
-      Command = HasNotStarted
+    { Inventory = { vehicles = Array.empty; count = 0 }
+      GetInventory = HasNotStarted
+      AddVehicle = HasNotStarted
+      RemoveVehicle = HasNotStarted
       Hub = None },
     Cmd.SignalR.connect RegisterHub (fun hub ->
         hub.withUrl(Endpoints.Root)
@@ -36,29 +40,57 @@ let update (msg:Msg) (state:State) =
     | RegisterHub hub ->
         { state with Hub = Some hub },
         Cmd.SignalR.send (Some hub) Action.GetInventory
-    | Response (Response.InventoryUpdated inventory) ->
-        { state with Inventory = Resolved inventory },
+    | Response (Response.GetInventoryCompleted inventory) ->
+        { state with
+            Inventory = inventory
+            GetInventory = Resolved },
         Cmd.none
-    | Response Response.CommandSucceeded ->
-        { state with Command = Resolved () },
+    | Response (Response.GetInventoryFailed message) ->
+        { state with
+            GetInventory = Failed message },
+        Cmd.none
+    | Response Response.AddVehicleCompleted ->
+        { state with AddVehicle = Resolved },
+        Cmd.none
+    | Response (Response.AddVehicleFailed message) ->
+        { state with AddVehicle = Failed message },
+        Cmd.none
+    | Response Response.RemoveVehicleCompleted ->
+        { state with RemoveVehicle = Resolved },
+        Cmd.none
+    | Response (Response.RemoveVehicleFailed message) ->
+        { state with RemoveVehicle = Failed message },
         Cmd.none
     | GetInventory ->
-        { state with Inventory = InProgress },
+        { state with GetInventory = InProgress },
         Cmd.SignalR.send state.Hub Action.GetInventory
     | AddVehicle (vehicleId, vehicle) ->
+        let inventoriedVehicle = { version = 0L; vehicleId = vehicleId; vehicle = vehicle }
         { state with
-            Inventory = InProgress
-            Command = InProgress },
+            // NB: optimistically add the vehicle
+            Inventory =
+                { state.Inventory with
+                    count = state.Inventory.count + 1
+                    vehicles = state.Inventory.vehicles |> Array.append [| inventoriedVehicle |] }
+            GetInventory = InProgress
+            AddVehicle = InProgress },
         Cmd.SignalR.send state.Hub (Action.AddVehicle(vehicleId, vehicle))
     | RemoveVehicle vehicleId ->
         { state with
-            Inventory = InProgress
-            Command = InProgress },
+            // NB: optimistically remove the vehicle
+            Inventory =
+                { state.Inventory with
+                    count = state.Inventory.count - 1
+                    vehicles = state.Inventory.vehicles |> Array.filter (fun v -> v.vehicleId <> vehicleId) }
+            GetInventory = InProgress
+            RemoveVehicle = InProgress },
         Cmd.SignalR.send state.Hub (Action.RemoveVehicle(vehicleId))
 
 type ServerProviderValue =
-    { Inventory: Deferred<Inventory>
-      Command: Deferred<unit>
+    { Inventory: Inventory
+      GetInventory: Deferred
+      AddVehicle: Deferred
+      RemoveVehicle: Deferred
       addVehicle: VehicleId * Vehicle -> unit
       removeVehicle: VehicleId -> unit }
     
@@ -70,7 +102,9 @@ module ServerProvider =
         let state, dispatch = React.useElmish(init, update)
         let providerValue =
             { Inventory = state.Inventory
-              Command = state.Command
+              GetInventory = state.GetInventory
+              AddVehicle = state.AddVehicle
+              RemoveVehicle = state.RemoveVehicle
               addVehicle = fun payload -> dispatch (AddVehicle payload)
               removeVehicle = fun payload -> dispatch (RemoveVehicle payload) }
         React.contextProvider(serverContext, providerValue, children)

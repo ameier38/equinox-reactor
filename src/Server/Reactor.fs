@@ -39,26 +39,24 @@ type Service(store:Store.LiveCosmosStore, inventoryService:Inventory.Service, hu
             match stream with
             | Vehicle.Event.MatchesCategory vehicleId ->
                 let events = Vehicle.Event.decode span
-                let initial = Array.empty, Array.empty
-                let added, removed =
+                let initial = Array.empty
+                let ingestionEvents =
                     (initial, events)
-                    ||> Array.fold (fun (added, removed) e ->
+                    ||> Array.fold (fun s e ->
                         match e with
-                        | Vehicle.Event.Added payload ->
-                            let inventoriedVehicle = { vehicleId = vehicleId; vehicle = payload.vehicle }
-                            added |> Array.append [| inventoriedVehicle |], removed
-                        | Vehicle.Event.Removed ->
-                            added, removed |> Array.append [| vehicleId |])
-                Log.Information("Updating inventory")
-                do! inventoryService.Update(span.Version, added, removed)
+                        | idx, Vehicle.Event.Added payload ->
+                            let inventoriedVehicle = { version = idx; vehicleId = vehicleId; vehicle = payload.vehicle }
+                            s |> Array.append [| Inventory.VehicleAdded inventoriedVehicle |]
+                        | _, Vehicle.Event.Removed ->
+                            s |> Array.append [| Inventory.VehicleRemoved vehicleId |])
+                do! inventoryService.Ingest(ingestionEvents)
                 return SpanResult.AllProcessed, Outcome.Completed
             | Inventory.Event.MatchesCategory _ ->
                 let event = Inventory.Event.decode span |> Array.last
                 match event with
-                | Inventory.Event.Updated payload ->
-                    let inventory = { vehicles = payload.vehicles; count = payload.vehicles.Length }
-                    Log.Information("Inventory updated; notifying clients")
-                    do! hub.Clients.All.Send(Response.InventoryUpdated(inventory)) |> Async.AwaitTask
+                | Inventory.Event.Ingested _ ->
+                    let! inventory = inventoryService.Read()
+                    do! hub.Clients.All.Send(Response.GetInventoryCompleted(inventory)) |> Async.AwaitTask
                 return SpanResult.AllProcessed, Outcome.Completed
             | _ ->
                 return SpanResult.AllProcessed, Outcome.Skipped
