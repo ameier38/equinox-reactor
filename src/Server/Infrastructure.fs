@@ -1,4 +1,4 @@
-namespace Server
+namespace global
 
 open System
 open System.IO

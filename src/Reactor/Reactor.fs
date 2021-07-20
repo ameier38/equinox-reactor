@@ -37,29 +37,26 @@ type Service(store:Store.LiveCosmosStore, inventoryService:Inventory.Service, hu
     let handle (stream, span: StreamSpan<_>) =
         async {
             match stream with
-            | Vehicle.Event.MatchesCategory vehicleId ->
-                let events = Vehicle.Event.decode span
+            | Vehicle.Events.MatchesCategory vehicleId ->
+                let events = Vehicle.Events.decode span
                 let initial = Array.empty
                 let ingestionEvents =
                     (initial, events)
                     ||> Array.fold (fun s e ->
                         match e with
-                        | idx, Vehicle.Event.Added payload ->
+                        | idx, Vehicle.Events.Added payload ->
                             let inventoriedVehicle = { version = idx; vehicleId = vehicleId; vehicle = payload.vehicle }
                             s |> Array.append [| Inventory.VehicleAdded inventoriedVehicle |]
-                        | _, Vehicle.Event.Removed ->
+                        | _, Vehicle.Events.Removed ->
                             s |> Array.append [| Inventory.VehicleRemoved vehicleId |])
                 do! inventoryService.Ingest(ingestionEvents)
                 return SpanResult.AllProcessed, Outcome.Completed
-            | Inventory.Event.MatchesCategory _ ->
-                let event = Inventory.Event.decode span |> Array.last
-                match event with
-                | Inventory.Event.Ingested _ ->
-                    let! inventory = inventoryService.Read()
-                    do! hub.Clients.All.Send(Response.GetInventoryCompleted(inventory)) |> Async.AwaitTask
-                return SpanResult.AllProcessed, Outcome.Completed
-            | _ ->
-                return SpanResult.AllProcessed, Outcome.Skipped
+            | Inventory.Events.MatchesCategory _ ->
+                let! version, inventory = inventoryService.Read()
+                do! hub.Clients.All.Send(Response.GetInventoryCompleted(inventory)) |> Async.AwaitTask
+                return SpanResult.OverrideWritePosition version, Outcome.Completed
+            | sn ->
+                return failwithf "Unknown event %O" sn
         }
         
     let run =

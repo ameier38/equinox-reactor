@@ -13,9 +13,6 @@ module VehicleId =
         | true, value -> UMX.tag<vehicleId> value
         | false, _ -> failwith $"Invalid VehicleId: {s}"
     let create () = Guid.NewGuid() |> UMX.tag<vehicleId>
-    
-type Vehicle = { make: string; model: string; year: int }
-    
-type InventoriedVehicle = { version: int64; vehicleId: VehicleId; vehicle: Vehicle }
 
-type Inventory = { vehicles: InventoriedVehicle[]; count: int }
+type Vehicle = { vehicleId: VehicleId; make: string; model: string; year: int }
+type Inventory = { vehicles: Vehicle[] }
