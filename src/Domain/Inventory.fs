@@ -43,9 +43,12 @@ let interpret (events:Events.Event[]) (state:Fold.State) =
     events |> Seq.filter isFresh |> Seq.toList
     
 let render (state:Fold.State) =
-    state
-    |> Map.toSeq
-    |> Seq.map (fun )
+    let vehicles = 
+        state
+        |> Map.toSeq
+        |> Seq.map (fun (vid, v) -> { vehicleId = vid; make = v.make; model = v.model; year = v.year })
+        |> Seq.toArray
+    { vehicles = vehicles }
     
 type Service (resolve:unit -> Equinox.Decider<Events.Event,Fold.State>) =
     
@@ -55,7 +58,7 @@ type Service (resolve:unit -> Equinox.Decider<Events.Event,Fold.State>) =
         
     member _.Read() =
         let decider = resolve ()
-        decider.QueryEx(render)
+        decider.Query(render)
         
 module Cosmos =
     open Equinox.CosmosStore

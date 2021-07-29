@@ -1,12 +1,12 @@
-﻿module Server.Reactor
+﻿module Reactor.Service
 
 open Fable.SignalR
+open Infrastructure.Store
 open Microsoft.Extensions.Hosting
 open Propulsion.CosmosStore
 open Propulsion.Streams
 open Serilog
 open Shared.Hub
-open Shared.Types
 open System.Threading
 open System.Threading.Tasks
 
@@ -31,36 +31,41 @@ type Stats(log, statsInterval, stateInterval) =
             log.Information(" Completed {completed} Skipped {skipped}", completed, skipped)
             completed <- 0; skipped <- 0
 
-type Service(store:Store.LiveCosmosStore, inventoryService:Inventory.Service, hub:FableHubCaller<Action,Response>) =
+type Service(store:CosmosStore, inventoryService:Domain.Inventory.Service, hub:HubConnection<Action,unit,unit,Response,unit>) =
     let cts = new CancellationTokenSource()
     
     let handle (stream, span: StreamSpan<_>) =
         async {
             match stream with
-            | Vehicle.Events.MatchesCategory vehicleId ->
-                let events = Vehicle.Events.decode span
-                let initial = Array.empty
+            | Domain.Vehicle.Events.MatchesCategory vehicleId ->
+                let events = Domain.Vehicle.Events.decode span
                 let ingestionEvents =
-                    (initial, events)
-                    ||> Array.fold (fun s e ->
+                    events
+                    |> Array.map (fun e ->
                         match e with
-                        | idx, Vehicle.Events.Added payload ->
-                            let inventoriedVehicle = { version = idx; vehicleId = vehicleId; vehicle = payload.vehicle }
-                            s |> Array.append [| Inventory.VehicleAdded inventoriedVehicle |]
-                        | _, Vehicle.Events.Removed ->
-                            s |> Array.append [| Inventory.VehicleRemoved vehicleId |])
+                        | Domain.Vehicle.Events.Added payload ->
+                            Domain.Inventory.Events.VehicleAdded {| vehicleId = vehicleId; vehicle = payload.vehicle |}
+                        | Domain.Vehicle.Events.Removed ->
+                            Domain.Inventory.Events.VehicleRemoved {| vehicleId = vehicleId |})
+                Log.Debug("ingesting events {IngestionEvents}", ingestionEvents)
                 do! inventoryService.Ingest(ingestionEvents)
                 return SpanResult.AllProcessed, Outcome.Completed
-            | Inventory.Events.MatchesCategory _ ->
-                let! version, inventory = inventoryService.Read()
-                do! hub.Clients.All.Send(Response.GetInventoryCompleted(inventory)) |> Async.AwaitTask
-                return SpanResult.OverrideWritePosition version, Outcome.Completed
+            | Domain.Inventory.Events.MatchesCategory _ ->
+                try
+                    Log.Debug("sending InventoryUpdated")
+                    do! hub.Send(Action.InventoryUpdated)
+                    Log.Debug("InventoryUpdated sent")
+                    return SpanResult.AllProcessed, Outcome.Completed
+                with ex ->
+                    Log.Error(ex, "error sending InventoryUpdated")
+                    return SpanResult.NoneProcessed, Outcome.Completed
             | sn ->
-                return failwithf "Unknown event %O" sn
+                return failwith $"Unknown event {sn}"
         }
         
     let run =
         async {
+            do! hub.Start()
             let stats = Stats(Log.Logger, System.TimeSpan.FromMinutes 1., System.TimeSpan.FromMinutes 5.)
             let sink = StreamsProjector.Start(Log.Logger, 10, 1, handle, stats, System.TimeSpan.FromMinutes 1.)
             let mapContent = Seq.collect EquinoxNewtonsoftParser.enumStreamEvents
@@ -71,12 +76,11 @@ type Service(store:Store.LiveCosmosStore, inventoryService:Inventory.Service, hu
         }
         
     interface IHostedService with
-        
         member _.StartAsync(ct:CancellationToken) =
             let work = async { do Async.Start(run, cts.Token) }
             Async.StartAsTask(work, cancellationToken=ct) :> Task
-        
+            
         member _.StopAsync(ct:CancellationToken) =
             let work = async { do cts.Cancel() }
             Async.StartAsTask(work, cancellationToken=ct) :> Task
-        
+            

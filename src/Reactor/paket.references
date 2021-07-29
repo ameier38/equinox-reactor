@@ -1,2 +1,6 @@
-Fable.SignalR
+Microsoft.Extensions.Hosting
+Fable.SignalR.DotNet
 Propulsion.CosmosStore
+Serilog.Extensions.Hosting
+Serilog.Sinks.Console
+Serilog.Sinks.Seq

@@ -47,3 +47,6 @@ The following targets are available:
    TestIntegrations
    TestUnits
 ```
+
+## Resources
+- [.NET Core Generic Host](https://docs.microsoft.com/en-us/dotnet/core/extensions/generic-host)

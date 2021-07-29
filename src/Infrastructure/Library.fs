@@ -1,4 +1,4 @@
-namespace global
+﻿namespace global
 
 open System
 open System.IO
@@ -16,11 +16,3 @@ module Env =
             File.ReadAllText(secretPath).Trim()
         else
             getVariable defaultEnv defaultValue
-            
-module Log =
-    let forMetrics () =
-        Serilog.Log.ForContext("isMetric", true)
-
-module Equinox =
-    let createDecider stream =
-        Equinox.Decider(Log.forMetrics (), stream, maxAttempts = 3)

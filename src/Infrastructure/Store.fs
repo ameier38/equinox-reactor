@@ -1,10 +1,10 @@
-﻿module Server.Store
+﻿module Infrastructure.Store
 
 open Equinox.CosmosStore
-open Server.Config
+open Config
 open System
 
-type LiveCosmosStore(config:CosmosDBConfig) =
+type CosmosStore(config:CosmosDBConfig) =
     let discovery = Discovery.ConnectionString config.Connection
     let timeout = TimeSpan.FromSeconds 5.
     let maxRetries = 3

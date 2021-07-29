@@ -34,11 +34,27 @@ let startApp (config:CanopyConfig) =
     describe $"starting app {clientUrl}"
     url clientUrl
     waitForElement "#app"
+    
+let loading () =
+    let countTitle = read "#count-title"
+    not (countTitle.Contains("Loading"))
+    
 
 let registerTestApp (config:CanopyConfig) =
     "test app" &&& fun () ->
         startApp config
         describe "should be on home page"
+        on config.ClientUrl
+        waitFor loading
+        let initialCount = read "#count" |> int
+        describe $"initial count: {initialCount}"
+        "#make" << "Toyota"
+        "#model" << "Tundra"
+        "#year" << "2001"
+        click "#submit"
+        waitFor loading
+        describe $"count should be {initialCount + 1}"
+        "#count" == $"{initialCount + 1}"
     
 let run (browserMode:BrowserMode) =
     let mutable failed = false

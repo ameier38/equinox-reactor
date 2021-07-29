@@ -2,27 +2,20 @@ open Fable.SignalR
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.Extensions.DependencyInjection
-open Shared.Hub
 open Serilog
-open Serilog.Events
 open Server.Config
 
 let configureServices (config:Config) (services:IServiceCollection) =
     services
         .AddSignalR(Server.Hub.settings)
-        .AddSingleton<Server.Store.LiveCosmosStore>(fun s ->
-            Server.Store.LiveCosmosStore(config.CosmosDBConfig))
-        .AddSingleton<Server.Vehicle.Service>(fun s ->
-            let store = s.GetRequiredService<Server.Store.LiveCosmosStore>()
-            Server.Vehicle.Cosmos.createService store.Context)
-        .AddSingleton<Server.Inventory.Service>(fun s ->
-            let store = s.GetRequiredService<Server.Store.LiveCosmosStore>()
-            Server.Inventory.Cosmos.createService store.Context)
-        .AddHostedService<Server.Reactor.Service>(fun s ->
-            let store = s.GetRequiredService<Server.Store.LiveCosmosStore>()
-            let inventoryService = s.GetRequiredService<Server.Inventory.Service>()
-            let hub = s.GetRequiredService<FableHubCaller<Action,Response>>()
-            Server.Reactor.Service(store, inventoryService, hub))
+        .AddSingleton<Infrastructure.Store.CosmosStore>(fun s ->
+            Infrastructure.Store.CosmosStore(config.CosmosDBConfig))
+        .AddSingleton<Domain.Vehicle.Service>(fun s ->
+            let store = s.GetRequiredService<Infrastructure.Store.CosmosStore>()
+            Domain.Vehicle.Cosmos.createService store.Context)
+        .AddSingleton<Domain.Inventory.Service>(fun s ->
+            let store = s.GetRequiredService<Infrastructure.Store.CosmosStore>()
+            Domain.Inventory.Cosmos.createService store.Context)
         |> ignore
         
 let configureApp (appBuilder:IApplicationBuilder) =
@@ -40,8 +33,7 @@ let main _argv =
     let logger =
        LoggerConfiguration()
            .Enrich.WithProperty("Application", config.AppName)
-           .Enrich.WithProperty("Environment", config.AppEnv)
-           .MinimumLevel.Is(if config.AppEnv = AppEnv.Dev then LogEventLevel.Debug else LogEventLevel.Information)
+           .MinimumLevel.Debug()
            .WriteTo.Console()
            .WriteTo.Seq(config.SeqConfig.Url)
            .CreateLogger()

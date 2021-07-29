@@ -15,6 +15,7 @@ let root = Path.getDirectory src
 let sln = root </> "EquinoxReactor.sln"
 let clientProj = src </> "Client" </> "src" </> "Client.fsproj"
 let serverProj = src </> "Server" </> "Server.fsproj"
+let reactorProj = src </> "Reactor" </> "Reactor.fsproj"
 let testsProj = src </> "Tests" </> "Tests.fsproj"
 
 let registerTasks() =
@@ -110,17 +111,23 @@ let registerTasks() =
         if not res.OK then
             failwithf $"{res.Errors}"
     } |> ignore
-
-    BuildTask.create "PublishServer" [] {
+    
+    let publish (proj:string) =
         let runtime = Environment.environVarOrDefault "RUNTIME_ID" "linux-x64"
-        let projRoot = Path.getDirectory serverProj
-        Trace.tracefn "Publishing with runtime %s" runtime
+        let projRoot = Path.getDirectory proj
         DotNet.publish
             (fun args -> 
                 { args with
                     OutputPath = Some $"%s{projRoot}/out"
                     Runtime = Some runtime })
-            $"%s{serverProj}"
+            $"%s{proj}"
+
+    BuildTask.create "PublishServer" [] {
+        publish serverProj
+    } |> ignore
+    
+    BuildTask.create "PublishReactor" [] {
+        publish reactorProj
     } |> ignore
 
 [<EntryPoint>]

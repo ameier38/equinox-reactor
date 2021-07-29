@@ -10,8 +10,8 @@ nuget Expecto
 nuget Fable.Core
 nuget Fable.Browser.Dom
 nuget Fable.Elmish
-nuget Fable.SignalR
 nuget Fable.SignalR.AspNetCore
+nuget Fable.SignalR.DotNet
 nuget Fable.SignalR.Elmish
 nuget Feliz
 nuget Feliz.UseElmish
@@ -20,9 +20,11 @@ nuget Microsoft.AspNetCore
 nuget Microsoft.AspNetCore.StaticFiles
 nuget Microsoft.AspNetCore.SignalR.Core
 nuget Microsoft.Azure.Cosmos 3.20.1-preview
+nuget Microsoft.Extensions.Hosting
 nuget Propulsion.CosmosStore 2.11.0-rc2
 nuget Serilog
 nuget Serilog.AspNetCore
+nuget Serilog.Extensions.Hosting
 nuget Serilog.Sinks.Console
 nuget Serilog.Sinks.Seq
 nuget Selenium.WebDriver.ChromeDriver 91.0.4472.10100
