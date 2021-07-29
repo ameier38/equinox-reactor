@@ -55,20 +55,22 @@ let registerTestApp (config:CanopyConfig) =
         waitFor loading
         describe $"count should be {initialCount + 1}"
         "#count" == $"{initialCount + 1}"
+        describe "remove vehicle"
+        let removeButton = elementWithText "button" "Remove"
+        click removeButton
+        waitFor loading
+        describe $"count should be {initialCount}"
+        "#count" == $"{initialCount}"
     
 let run (browserMode:BrowserMode) =
-    let mutable failed = false
-    try
-        let config = CanopyConfig.Load()
-        printfn $"config: {config}"
-        configureCanopy config
-        registerTestApp config
-        startBrowser browserMode
-        run()
-        onFail (fun _ -> failed <- true)
-        quit()
-        if failed then 1 else 0
-    with ex ->
-        printfn $"Error! {ex}"
-        quit()
-        1
+    let config = CanopyConfig.Load()
+    let mutable fail = false
+    printfn $"config: {config}"
+    configureCanopy config
+    registerTestApp config
+    startBrowser browserMode
+    onFail (fun _ -> fail <- true)
+    run()
+    quit()
+    if fail then 1 else 0
+    

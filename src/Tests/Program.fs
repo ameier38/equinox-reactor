@@ -17,17 +17,13 @@ and Arguments =
 
 [<EntryPoint>]
 let main argv =
-    try
-        let parser = ArgumentParser.Create<Arguments>()
-        let arguments = parser.Parse(argv)
-        printfn $"received arguments: {arguments}"
-        match arguments.GetAllResults() with
-        | [ Test_Integrations integrationTestArguments ] ->
-            let browserMode =
-                integrationTestArguments.TryGetResult Browser_Mode
-                |> Option.defaultValue IntegrationTests.BrowserMode.Local
-            IntegrationTests.run browserMode
-        | other -> failwith $"invalid arguments: {other}"
-    with ex ->
-        printfn $"Error!: {ex}"
-        1
+    let parser = ArgumentParser.Create<Arguments>()
+    let arguments = parser.Parse(argv)
+    printfn $"received arguments: {arguments}"
+    match arguments.GetAllResults() with
+    | [ Test_Integrations integrationTestArguments ] ->
+        let browserMode =
+            integrationTestArguments.TryGetResult Browser_Mode
+            |> Option.defaultValue IntegrationTests.BrowserMode.Local
+        IntegrationTests.run browserMode
+    | other -> failwith $"invalid arguments: {other}"

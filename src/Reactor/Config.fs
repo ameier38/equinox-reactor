@@ -1,4 +1,4 @@
-﻿module Reactor.Config
+﻿namespace Reactor
 
 open System
 

@@ -1,14 +1,13 @@
 ﻿open Fable.SignalR
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
-open Reactor.Config
 open Serilog.Events
 open Shared.Hub
 open Serilog
 
 type Hub = HubConnection<Action,unit,unit,Response,unit>
 
-let configureServices (config:Config) (services:IServiceCollection) =
+let configureServices (config:Reactor.Config) (services:IServiceCollection) =
     services
         .AddSingleton<Hub>(fun _ ->
             SignalR.Connect<Action,unit,unit,Response,unit>(fun hub ->
@@ -19,16 +18,16 @@ let configureServices (config:Config) (services:IServiceCollection) =
         .AddSingleton<Domain.Inventory.Service>(fun s ->
             let cosmosStore = s.GetRequiredService<Infrastructure.Store.CosmosStore>()
             Domain.Inventory.Cosmos.createService cosmosStore.Context)
-        .AddHostedService<Reactor.Service.Service>(fun s ->
+        .AddHostedService<Reactor.Service>(fun s ->
             let hub = s.GetRequiredService<Hub>()
             let cosmosStore = s.GetRequiredService<Infrastructure.Store.CosmosStore>()
             let inventoryService = s.GetRequiredService<Domain.Inventory.Service>()
-            Reactor.Service.Service(cosmosStore, inventoryService, hub))
+            Reactor.Service(cosmosStore, inventoryService, hub))
         |> ignore
 
 [<EntryPoint>]
 let main _argv =
-    let config = Config.Load()
+    let config = Reactor.Config.Load()
     let logger =
         LoggerConfiguration()
             .Enrich.WithProperty("Application", "Reactor")

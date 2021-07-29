@@ -1,4 +1,4 @@
-﻿module Reactor.Service
+﻿namespace Reactor
 
 open Fable.SignalR
 open Infrastructure.Store
