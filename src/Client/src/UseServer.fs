@@ -9,7 +9,7 @@ open Shared.Types
 open Shared.Hub
 
 type State =
-    { Inventory: Inventory
+    { Inventory: InventoryDto
       GetInventory: Deferred
       AddVehicle: Deferred
       RemoveVehicle: Deferred
@@ -17,13 +17,11 @@ type State =
     
 type Msg =
     | RegisterHub of Elmish.Hub<Action,Response>
+    | Action of Action
     | Response of Response
-    | GetInventory
-    | AddVehicle of VehicleId * Vehicle
-    | RemoveVehicle of VehicleId
     
 let init() =
-    { Inventory = { vehicles = Array.empty; count = 0 }
+    { Inventory = { vehicles = Array.empty }
       GetInventory = HasNotStarted
       AddVehicle = HasNotStarted
       RemoveVehicle = HasNotStarted
@@ -61,37 +59,34 @@ let update (msg:Msg) (state:State) =
     | Response (Response.RemoveVehicleFailed message) ->
         { state with RemoveVehicle = Failed message },
         Cmd.none
-    | GetInventory ->
+    | Action Action.GetInventory ->
         { state with GetInventory = InProgress },
         Cmd.SignalR.send state.Hub Action.GetInventory
-    | AddVehicle (vehicleId, vehicle) ->
-        let inventoriedVehicle = { version = 0L; vehicleId = vehicleId; vehicle = vehicle }
+    | Action (Action.AddVehicle vehicle) ->
         { state with
             // NB: optimistically add the vehicle
             Inventory =
                 { state.Inventory with
-                    count = state.Inventory.count + 1
-                    vehicles = state.Inventory.vehicles |> Array.append [| inventoriedVehicle |] }
+                    vehicles = state.Inventory.vehicles |> Array.append [| vehicle |] }
             GetInventory = InProgress
             AddVehicle = InProgress },
-        Cmd.SignalR.send state.Hub (Action.AddVehicle(vehicleId, vehicle))
-    | RemoveVehicle vehicleId ->
+        Cmd.SignalR.send state.Hub (Action.AddVehicle(vehicle))
+    | Action (Action.RemoveVehicle vehicleId) ->
         { state with
             // NB: optimistically remove the vehicle
             Inventory =
                 { state.Inventory with
-                    count = state.Inventory.count - 1
                     vehicles = state.Inventory.vehicles |> Array.filter (fun v -> v.vehicleId <> vehicleId) }
             GetInventory = InProgress
             RemoveVehicle = InProgress },
         Cmd.SignalR.send state.Hub (Action.RemoveVehicle(vehicleId))
 
 type ServerProviderValue =
-    { Inventory: Inventory
+    { Inventory: InventoryDto
       GetInventory: Deferred
       AddVehicle: Deferred
       RemoveVehicle: Deferred
-      addVehicle: VehicleId * Vehicle -> unit
+      addVehicle: VehicleDto -> unit
       removeVehicle: VehicleId -> unit }
     
 module ServerProvider =
@@ -105,8 +100,8 @@ module ServerProvider =
               GetInventory = state.GetInventory
               AddVehicle = state.AddVehicle
               RemoveVehicle = state.RemoveVehicle
-              addVehicle = fun payload -> dispatch (AddVehicle payload)
-              removeVehicle = fun payload -> dispatch (RemoveVehicle payload) }
+              addVehicle = fun payload -> dispatch (Action (Action.AddVehicle payload))
+              removeVehicle = fun payload -> dispatch (Action (Action.RemoveVehicle payload)) }
         React.contextProvider(serverContext, providerValue, children)
         
 type Server =

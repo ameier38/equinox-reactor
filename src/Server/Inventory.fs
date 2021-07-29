@@ -1,14 +1,15 @@
-module Domain.Inventory
+module Server.Inventory
 
-open FsCodec.NewtonsoftJson
 open Shared.Types
+open FsCodec.NewtonsoftJson
 
 let [<Literal>] private Category = "Inventory"
-// TODO: add limit and additional epoch
-let streamName () = FsCodec.StreamName.create Category "0"
+let streamName () = FsCodec.StreamName.create Category "1"
 
 [<RequireQualifiedAccess>]
 module Events =
+    
+    // NB: actual storage format so version with care
     type Event =
         | VehicleAdded of {| vehicleId: VehicleId; vehicle: Vehicle.Events.Vehicle |}
         | VehicleRemoved of {| vehicleId: VehicleId |}
@@ -42,10 +43,14 @@ let interpret (events:Events.Event[]) (state:Fold.State) =
          | Events.VehicleRemoved e -> exists e.vehicleId
     events |> Seq.filter isFresh |> Seq.toList
     
-let render (state:Fold.State) =
-    state
-    |> Map.toSeq
-    |> Seq.map (fun )
+let render (state:Fold.State): InventoryDto =
+    let vehicles =
+        state
+        |> Map.toSeq
+        |> Seq.map (fun (vid, v) ->
+            { vehicleId = vid; make = v.make; model = v.model; year = v.year })
+        |> Seq.toArray
+    { vehicles = vehicles }
     
 type Service (resolve:unit -> Equinox.Decider<Events.Event,Fold.State>) =
     
@@ -55,7 +60,7 @@ type Service (resolve:unit -> Equinox.Decider<Events.Event,Fold.State>) =
         
     member _.Read() =
         let decider = resolve ()
-        decider.QueryEx(render)
+        decider.Query(render)
         
 module Cosmos =
     open Equinox.CosmosStore

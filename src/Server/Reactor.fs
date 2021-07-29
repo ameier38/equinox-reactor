@@ -39,24 +39,24 @@ type Service(store:Store.LiveCosmosStore, inventoryService:Inventory.Service, hu
             match stream with
             | Vehicle.Events.MatchesCategory vehicleId ->
                 let events = Vehicle.Events.decode span
-                let initial = Array.empty
                 let ingestionEvents =
-                    (initial, events)
-                    ||> Array.fold (fun s e ->
+                    events
+                    |> Array.map (fun e ->
                         match e with
-                        | idx, Vehicle.Events.Added payload ->
-                            let inventoriedVehicle = { version = idx; vehicleId = vehicleId; vehicle = payload.vehicle }
-                            s |> Array.append [| Inventory.VehicleAdded inventoriedVehicle |]
-                        | _, Vehicle.Events.Removed ->
-                            s |> Array.append [| Inventory.VehicleRemoved vehicleId |])
+                        | Vehicle.Events.Added payload ->
+                            let payload = {| vehicleId = vehicleId; vehicle = payload.vehicle |}
+                            Inventory.Events.VehicleAdded payload
+                        | Vehicle.Events.Removed ->
+                            let payload = {| vehicleId = vehicleId |}
+                            Inventory.Events.VehicleRemoved payload)
                 do! inventoryService.Ingest(ingestionEvents)
                 return SpanResult.AllProcessed, Outcome.Completed
             | Inventory.Events.MatchesCategory _ ->
-                let! version, inventory = inventoryService.Read()
+                let! inventory = inventoryService.Read()
                 do! hub.Clients.All.Send(Response.GetInventoryCompleted(inventory)) |> Async.AwaitTask
-                return SpanResult.OverrideWritePosition version, Outcome.Completed
+                return SpanResult.AllProcessed, Outcome.Completed
             | sn ->
-                return failwithf "Unknown event %O" sn
+                return failwith $"Unknown event %O{sn}"
         }
         
     let run =
@@ -65,7 +65,7 @@ type Service(store:Store.LiveCosmosStore, inventoryService:Inventory.Service, hu
             let sink = StreamsProjector.Start(Log.Logger, 10, 1, handle, stats, System.TimeSpan.FromMinutes 1.)
             let mapContent = Seq.collect EquinoxNewtonsoftParser.enumStreamEvents
             use observer = CosmosStoreSource.CreateObserver(Log.Logger, sink.StartIngester, mapContent)
-            let pipeline = CosmosStoreSource.Run(Log.Logger, store.StoreContainer, store.LeaseContainer, "Reactor", observer, startFromTail=false)
+            let pipeline = CosmosStoreSource.Run(Log.Logger, store.StoreContainer, store.LeaseContainer, "Reactor-2", observer, startFromTail=false)
             Async.Start(pipeline, cancellationToken=cts.Token)
             do! sink.AwaitCompletion()
         }

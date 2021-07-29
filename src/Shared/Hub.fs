@@ -5,12 +5,12 @@ open Shared.Types
 [<RequireQualifiedAccess>]
 type Action =
     | GetInventory
-    | AddVehicle of VehicleId * Vehicle
+    | AddVehicle of VehicleDto
     | RemoveVehicle of VehicleId
 
 [<RequireQualifiedAccess>]
 type Response =
-    | GetInventoryCompleted of Inventory
+    | GetInventoryCompleted of InventoryDto
     | GetInventoryFailed of string
     | AddVehicleCompleted
     | AddVehicleFailed of string

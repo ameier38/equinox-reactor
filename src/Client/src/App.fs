@@ -56,13 +56,14 @@ let VehicleForm () =
                 prop.onSubmit(fun e ->
                     e.preventDefault()
                     let vehicleId = VehicleId.create()
-                    let vehicle = { make = make; model = model; year = int year }
-                    server.addVehicle(vehicleId, vehicle))
+                    let vehicle = { vehicleId = vehicleId; make = make; model = model; year = int year }
+                    server.addVehicle(vehicle))
                 prop.children [
                     input "make" "Make: " make setMake
                     input "model" "Model: " model setModel
                     input "year" "Year: " year setYear
                     Html.button [
+                        prop.id "submit"
                         prop.className $"rounded-md shadow p-2 bg-gray-200 {disabled}"
                         prop.action "submit"
                         prop.text "Submit"
@@ -79,6 +80,7 @@ let VehicleCount () =
         prop.className "w-1/2 p-2 m-2 rounded-md border-2 border-gray-200"
         prop.children [
             Html.h2 [
+                prop.id "count-title"
                 prop.children [
                     Html.text "Vehicle Count: "
                     match server.GetInventory with
@@ -92,7 +94,9 @@ let VehicleCount () =
                 ]
             ]
             Html.h1 [
-                prop.text server.Inventory.count
+                prop.id "count"
+                prop.className "text-xl font-medium"
+                prop.text server.Inventory.vehicles.Length
             ]
         ]
     ]
@@ -118,18 +122,18 @@ let VehicleList() =
             ]
             Html.unorderedList [
                 prop.children [
-                    for { vehicleId = vid; vehicle = v } in server.Inventory.vehicles do
+                    for vehicle in server.Inventory.vehicles do
                         Html.li [
-                            prop.className "my-2"
+                            prop.className "my-2 vehicle"
                             prop.children [
                                 Html.button [
-                                    prop.className "rounded-md shadow p-2 bg-gray-200 mr-2"
+                                    prop.className "btn-remove rounded-md shadow p-2 bg-gray-200 mr-2"
                                     prop.text "Remove"
                                     prop.onClick(fun e ->
                                         e.preventDefault()
-                                        server.removeVehicle(vid))
+                                        server.removeVehicle(vehicle.vehicleId))
                                 ]
-                                Html.span $"{v.year} {v.make} {v.model}"
+                                Html.span $"{vehicle.year} {vehicle.make} {vehicle.model}"
                             ]
                         ]
                 ]

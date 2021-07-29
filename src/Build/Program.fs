@@ -37,16 +37,6 @@ let registerTasks() =
         DotNet.restore id sln
     } |> ignore
 
-    BuildTask.create "TestUnits" [] {
-        let res =
-            DotNet.exec
-                id
-                "run"
-                $"-p {testsProj}"
-        if not res.OK then
-            failwithf $"{res.Errors}"
-    } |> ignore
-    
     let watchServer =
         async {
             Environment.setEnvironVar "SECRETS_DIR" "/dev/secrets/ameier38"
@@ -96,7 +86,7 @@ let registerTasks() =
             DotNet.exec
                 id
                 "run"
-                $"-p {testsProj} -- test-integrations"
+                $"-p {testsProj} test-integrations"
         if not res.OK then
             failwithf $"{res.Errors}"
     } |> ignore
@@ -106,7 +96,7 @@ let registerTasks() =
             DotNet.exec
                 id
                 "run"
-                $"-p {testsProj} -- test-integrations --browser-mode=headless"
+                $"-p {testsProj} test-integrations --browser-mode headless"
         if not res.OK then
             failwithf $"{res.Errors}"
     } |> ignore

@@ -1,7 +1,6 @@
-# F# EventStoreDB Subscription
-Example project to demonstrate how to use the F# MailboxProcessor
-to manage an EventStoreDB subscription as part of a 'Reactor'
-in an event sourced system.
+# F# Equinox Reactor
+Example system to show how to build a _reactor_ using Equinox and Propulsion
+libraries.
 
 ## Demo
 ![demo](./etc/images/demo.gif)
@@ -9,6 +8,20 @@ in an event sourced system.
 ## Architecture
 
 ![context](./etc/diagrams/images/context/context.png)
+
+## Setup
+Restore tools.
+```
+dotnet tool restore
+```
+Create store container.
+```
+dotnet eqx init --rus 400 cosmos -s $conn -d test -c test
+```
+Create lease container.
+```
+dotnet propulsion init --rus 400 cosmos -s $conn -d test -c test
+```
 
 ## Usage
 Build the services.

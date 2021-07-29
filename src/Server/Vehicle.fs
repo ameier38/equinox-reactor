@@ -1,4 +1,4 @@
-module Domain.Vehicle
+module Server.Vehicle
 
 open Shared.Types
 open FsCodec.NewtonsoftJson
@@ -8,8 +8,10 @@ let streamName id = FsCodec.StreamName.create Category (VehicleId.toString id)
 
 [<RequireQualifiedAccess>]
 module Events =
+    
     type Vehicle = { make: string; model: string; year: int }
     
+    // NB: actual storage format so version with care
     type Event =
         | Added of {| vehicle: Vehicle |}
         | Removed
@@ -17,11 +19,7 @@ module Events =
     
     let codec = Codec.Create<Event>()
     let decode (span:Propulsion.Streams.StreamSpan<_>) =
-        span.events
-        |> Array.choose (fun e ->
-            match codec.TryDecode e with
-            | Some decoded -> Some (e.Index, decoded)
-            | None -> None)
+        span.events |> Array.choose codec.TryDecode
     let (|MatchesCategory|_|) (stream:FsCodec.StreamName) =
         match stream with
         | FsCodec.StreamName.CategoryAndId (Category, vehicleId) -> Some (VehicleId.parse vehicleId)
@@ -54,8 +52,10 @@ let interpretRemove = function
             
 type Service (resolve:VehicleId -> Equinox.Decider<Events.Event,State>) =
     
-    member _.Add(vehicleId, vehicle) =
-        let decider = resolve vehicleId
+    member _.Add(vehicleDto:VehicleDto) =
+        let vehicle: Events.Vehicle =
+            { make = vehicleDto.make; model = vehicleDto.model; year = vehicleDto.year }
+        let decider = resolve vehicleDto.vehicleId
         decider.Transact(interpretAdd vehicle)
         
     member _.Remove(vehicleId) =
