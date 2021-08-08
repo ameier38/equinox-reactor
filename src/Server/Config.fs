@@ -24,6 +24,11 @@ type CosmosDBConfig =
           StoreContainer = storeContainer
           LeaseContainer = $"{storeContainer}-aux" }
 
+type PostgresDBConfig =
+    { Connection: string }
+    static member Load() =
+        { Connection = Env.getVariable "POSTGRESDB_CONNECTION" "Host=localhost;Port=5432;User Id=postgres;Database=test" }
+
 type SeqConfig =
     { Url: string }
     static member Load() =
@@ -37,10 +42,12 @@ type Config =
       AppEnv: AppEnv
       ServerConfig: ServerConfig
       CosmosDBConfig: CosmosDBConfig
+      PostgresDBConfig: PostgresDBConfig
       SeqConfig: SeqConfig }
     static member Load() =
         { AppName = Env.getVariable "APP_NAME" "EquinoxReactor"
           AppEnv = match Env.getVariable "APP_ENV" "dev" with "prod" -> AppEnv.Prod | _ -> AppEnv.Dev
           ServerConfig = ServerConfig.Load()
           CosmosDBConfig = CosmosDBConfig.Load()
+          PostgresDBConfig = PostgresDBConfig.Load()
           SeqConfig = SeqConfig.Load() }

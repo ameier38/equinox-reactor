@@ -20,9 +20,9 @@ module Settings =
                         return Response.GetInventoryCompleted inventory
                     with ex ->
                         return Response.GetInventoryFailed ex.Message
-                | Action.AddVehicle vehicleDto ->
+                | Action.AddVehicle vehicle ->
                     try
-                        do! vehicleService.Add(vehicleDto)
+                        do! vehicleService.Add(vehicle)
                         return Response.AddVehicleCompleted
                     with ex ->
                         return Response.AddVehicleFailed ex.Message

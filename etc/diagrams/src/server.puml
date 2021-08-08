@@ -1,0 +1,22 @@
+@startuml server
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+Container(spa, "SPA", "F#, Fable, React")
+ContainerDb(cosmos, "CosmosDB", "Stores raw events and read models")
+
+Container_Boundary(server, "Server") {
+    Component(vehicle, "Vehicle.Service", "Handles vehicle requests")
+    Component(inventory, "Inventory.Service", "Handles inventory requests")
+    Component(reactor, "Reactor.Service", "Subscribes to events and sends reaction requests")
+    Component(hub, "Hub", "Handles web requests and sends web responses")
+    Rel(spa, hub, "Sends action messages to", "Websocket")
+    Rel(hub, vehicle, "Makes vehicle requests to")
+    Rel(vehicle, cosmos, "Stores events in; Reads events from", "TCP")
+    Rel(hub, inventory, "Makes inventory requests to")
+    Rel(inventory, cosmos, "Stores events in; Reads events from", "TCP")
+    Rel(cosmos, reactor, "Subscribes to events from", "TCP")
+    Rel(reactor, inventory, "Handles vehicle events by calling Ingest on")
+    Rel(reactor, hub, "Handles inventory events by sending messages to")
+}
+Rel(hub, spa, "Sends inventory changed response messages to", "Websocket")
+@enduml

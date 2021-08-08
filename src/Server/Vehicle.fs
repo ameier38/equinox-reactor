@@ -52,11 +52,11 @@ let interpretRemove = function
             
 type Service (resolve:VehicleId -> Equinox.Decider<Events.Event,State>) =
     
-    member _.Add(vehicleDto:VehicleDto) =
-        let vehicle: Events.Vehicle =
-            { make = vehicleDto.make; model = vehicleDto.model; year = vehicleDto.year }
-        let decider = resolve vehicleDto.vehicleId
-        decider.Transact(interpretAdd vehicle)
+    member _.Add(vehicle:Vehicle) =
+        let domainVehicle: Events.Vehicle =
+            { make = vehicle.make; model = vehicle.model; year = vehicle.year }
+        let decider = resolve vehicle.vehicleId
+        decider.Transact(interpretAdd domainVehicle)
         
     member _.Remove(vehicleId) =
         let decider = resolve vehicleId

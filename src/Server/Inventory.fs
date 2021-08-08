@@ -4,7 +4,7 @@ open Shared.Types
 open FsCodec.NewtonsoftJson
 
 let [<Literal>] private Category = "Inventory"
-let streamName () = FsCodec.StreamName.create Category "1"
+let streamName () = FsCodec.StreamName.create Category "0"
 
 [<RequireQualifiedAccess>]
 module Events =
@@ -43,7 +43,7 @@ let interpret (events:Events.Event[]) (state:Fold.State) =
          | Events.VehicleRemoved e -> exists e.vehicleId
     events |> Seq.filter isFresh |> Seq.toList
     
-let render (state:Fold.State): InventoryDto =
+let render (state:Fold.State): Inventory =
     let vehicles =
         state
         |> Map.toSeq

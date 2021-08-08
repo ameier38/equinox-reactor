@@ -54,10 +54,10 @@ let countShouldBe (x:int) =
     describe $"count should be {x}"
     "#count" == $"{x}"
     
-let cleanUp () =
+let removeVehicles () =
     let mutable iteration = 1
     let mutable run = true
-    while run && iteration < 10 do
+    while run && iteration < 100 do
         match someElement ".btn-remove" with
         | Some el ->
             click el
@@ -74,12 +74,13 @@ let registerTestApp (config:CanopyConfig) =
         on config.ClientUrl
         waitForLoading()
         let currentCount = read "#count" |> int
-        for model in models do
+        describe $"current count: {currentCount}"
+        for i, model in models |> List.indexed do
             addVehicle model
-            countShouldBe (currentCount + 1)
+            countShouldBe (currentCount + i + 1)
         describe "remove vehicles"
-        cleanUp()
-        countShouldBe currentCount
+        removeVehicles()
+        countShouldBe 0
     
 let run (browserMode:BrowserMode) =
     let mutable fail = false

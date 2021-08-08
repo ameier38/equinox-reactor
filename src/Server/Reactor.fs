@@ -6,7 +6,6 @@ open Propulsion.CosmosStore
 open Propulsion.Streams
 open Serilog
 open Shared.Hub
-open Shared.Types
 open System.Threading
 open System.Threading.Tasks
 
@@ -31,7 +30,7 @@ type Stats(log, statsInterval, stateInterval) =
             log.Information(" Completed {completed} Skipped {skipped}", completed, skipped)
             completed <- 0; skipped <- 0
 
-type Service(store:Store.LiveCosmosStore, inventoryService:Inventory.Service, hub:FableHubCaller<Action,Response>) =
+type Service(store:Store.Cosmos.CosmosStore, inventoryService:Inventory.Service, hub:FableHubCaller<Action,Response>) =
     let cts = new CancellationTokenSource()
     
     let handle (stream, span: StreamSpan<_>) =
@@ -64,8 +63,8 @@ type Service(store:Store.LiveCosmosStore, inventoryService:Inventory.Service, hu
             let stats = Stats(Log.Logger, System.TimeSpan.FromMinutes 1., System.TimeSpan.FromMinutes 5.)
             let sink = StreamsProjector.Start(Log.Logger, 10, 1, handle, stats, System.TimeSpan.FromMinutes 1.)
             let mapContent = Seq.collect EquinoxNewtonsoftParser.enumStreamEvents
-            use observer = CosmosStoreSource.CreateObserver(Log.Logger, sink.StartIngester, mapContent)
-            let pipeline = CosmosStoreSource.Run(Log.Logger, store.StoreContainer, store.LeaseContainer, "Reactor-2", observer, startFromTail=false)
+            let observer = CosmosStoreSource.CreateObserver(Log.Logger, sink.StartIngester, mapContent)
+            let pipeline = CosmosStoreSource.Run(Log.Logger, store.StoreContainer, store.LeaseContainer, "Reactor", observer, false)
             Async.Start(pipeline, cancellationToken=cts.Token)
             do! sink.AwaitCompletion()
         }

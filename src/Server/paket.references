@@ -3,6 +3,7 @@ FsCodec.NewtonsoftJson
 Microsoft.AspNetCore
 Microsoft.AspNetCore.StaticFiles
 Microsoft.AspNetCore.SignalR.Core
+Equinox.CosmosStore
 Propulsion.CosmosStore
 Serilog
 Serilog.AspNetCore

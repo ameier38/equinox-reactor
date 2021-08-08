@@ -9,7 +9,7 @@ open Shared.Types
 open Shared.Hub
 
 type State =
-    { Inventory: InventoryDto
+    { Inventory: Inventory
       GetInventory: Deferred
       AddVehicle: Deferred
       RemoveVehicle: Deferred
@@ -82,11 +82,11 @@ let update (msg:Msg) (state:State) =
         Cmd.SignalR.send state.Hub (Action.RemoveVehicle(vehicleId))
 
 type ServerProviderValue =
-    { Inventory: InventoryDto
+    { Inventory: Inventory
       GetInventory: Deferred
       AddVehicle: Deferred
       RemoveVehicle: Deferred
-      addVehicle: VehicleDto -> unit
+      addVehicle: Vehicle -> unit
       removeVehicle: VehicleId -> unit }
     
 module ServerProvider =

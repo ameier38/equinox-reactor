@@ -7,7 +7,13 @@ libraries.
 
 ## Architecture
 
+Context
+
 ![context](./etc/diagrams/images/context/context.png)
+
+Server
+
+![server](./etc/diagrams/images/server/server.png)
 
 ## Setup
 Restore tools.
@@ -31,7 +37,7 @@ docker-compose build
 
 Start the services.
 ```shell
-docker-compose up -d eventstore redis processor reactor reader client
+docker-compose up -d
 ```
 
 ## Development
@@ -42,21 +48,18 @@ dotnet tool restore
 
 Build targets.
 ```
-❯ dotnet fake build --list
-The last restore is still up to date. Nothing left to do.
+❯ .\fake.cmd
+The following targets are available:
 The following targets are available:
    BuildClient
-   Clean
-   Default
-   PublishIntegrationTests
-   PublishProcessor
-   PublishReactor
-   PublishReader
+   Clean        
+   CleanClient  
+   InstallClient
+   PublishServer
    Restore
-   StartClient
-   StartProcessor
-   StartReactor
-   StartReader
    TestIntegrations
-   TestUnits
+   TestIntegrationsHeadless
+   Watch
+   WatchClient
+   WatchServer
 ```

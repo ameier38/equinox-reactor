@@ -133,7 +133,7 @@ let VehicleList() =
                                         e.preventDefault()
                                         server.removeVehicle(vehicle.vehicleId))
                                 ]
-                                Html.span $"{vehicle.year} {vehicle.make} {vehicle.model}"
+                                Html.span $"{vehicle.vehicleId}: {vehicle.year} {vehicle.make} {vehicle.model}"
                             ]
                         ]
                 ]

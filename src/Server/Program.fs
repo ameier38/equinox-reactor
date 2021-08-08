@@ -10,16 +10,16 @@ open Server.Config
 let configureServices (config:Config) (services:IServiceCollection) =
     services
         .AddSignalR(Server.Hub.settings)
-        .AddSingleton<Server.Store.LiveCosmosStore>(fun s ->
-            Server.Store.LiveCosmosStore(config.CosmosDBConfig))
+        .AddSingleton<Server.Store.Cosmos.CosmosStore>(fun s ->
+            Server.Store.Cosmos.CosmosStore(config.CosmosDBConfig))
         .AddSingleton<Server.Vehicle.Service>(fun s ->
-            let store = s.GetRequiredService<Server.Store.LiveCosmosStore>()
+            let store = s.GetRequiredService<Server.Store.Cosmos.CosmosStore>()
             Server.Vehicle.Cosmos.createService store.Context)
         .AddSingleton<Server.Inventory.Service>(fun s ->
-            let store = s.GetRequiredService<Server.Store.LiveCosmosStore>()
+            let store = s.GetRequiredService<Server.Store.Cosmos.CosmosStore>()
             Server.Inventory.Cosmos.createService store.Context)
         .AddHostedService<Server.Reactor.Service>(fun s ->
-            let store = s.GetRequiredService<Server.Store.LiveCosmosStore>()
+            let store = s.GetRequiredService<Server.Store.Cosmos.CosmosStore>()
             let inventoryService = s.GetRequiredService<Server.Inventory.Service>()
             let hub = s.GetRequiredService<FableHubCaller<Action,Response>>()
             Server.Reactor.Service(store, inventoryService, hub))
